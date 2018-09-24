@@ -168,3 +168,543 @@ DEBUG:root:rst vector address found at: 0x93c1
 INFO:root:Binary reset vector located at 0x93c1
 INFO:root:Attempting to seek to reset vector...
 INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1
+INFO:root:R2 loaded arch: m7700
+DEBUG:root:rst vector address found at: 0x93c1
+INFO:root:Binary reset vector located at 0x93c1
+INFO:root:Attempting to seek to reset vector...
+INFO:root:R2 seeked to address 0x93c1

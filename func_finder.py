@@ -17,20 +17,145 @@ from subprocess import check_call
 from datetime import datetime
 
 # template for all function data types
+
+class instruction:
+
+    def __init__(self, base_addr, opcode):
+        self.base_addr = base_addr
+        params = opcode.split()
+        self.opcode = params[0]
+        self.params = params[1:]
+
+    def __str__(self):
+        if self.params:
+            ret = "OP: {}\nParams: {}\n".format(self.opcode, self.params)
+        else:
+            ret = "OP: {}\n".format(self.opcode)
+        return ret
+
+class block:
+    base_addr = 0x0
+    fail = None
+    jump = None
+
+    def __init__(self, base_addr, seq_json):
+        self.base_addr = base_addr
+        self.seq_inst = {}
+        for op in seq_json:
+            self.seq_inst[op[u'offset']] = instruction(op[u'offset'], op[u'opcode'])
+ 
+    def get_seq_opcode(self): 
+        return "WIP"    
+    
+    def print_inst(self):
+        for instruction in self.seq_inst.itervalues():
+            print(instruction)
+
+    def __str__(self):
+        ret = "Base_addr: 0x{:04x}\n".format(self.base_addr)
+        if self.fail:
+            ret += "\tFail: 0x{:04x}\n".format(self.fail.base_addr)
+        if self.jump:
+            ret += "\tJump: 0x{:04x}\n".format(self.jump.base_addr)
+        return ret
+
+class CFG:
+    first = None 
+
+    def __init__(self, json):
+        self.json = json[0]
+        if u'offset' in json[0]:
+            self.base_addr = json[0][u'offset']
+            if u'blocks' in json[0]:
+                blocks = json[0][u'blocks']
+                dict_block = {}
+                # pass addr of first block, ops of first block, and pointers of first block
+
+                self.first = block(blocks[000][u'offset'], blocks[000][u'ops'])
+
+                # create a dictionary of all blocks
+                for blk in blocks:
+                    dict_block [blk[u'offset']] = [block(
+                    blk[u'offset'], 
+                    blk[u'ops']), blk]
+
+                # match up all the block objects to their corresponding jump, fail addresses
+                for key, pair in dict_block.items():
+                    block_obj = pair[0]
+                    block_json = pair[1]
+                    # really, really sloppy method for now
+                    # JSON has some weird errors where functions don't match up to the jump addresses
+                    # might be an issue with the r2 debugger, but this is just a sloppy work-around
+                    if u'fail' in block_json:
+                        try:
+                            block_obj.fail = dict_block[block_json[u'fail']][0]
+                        except KeyError:
+                            try:
+                                block_obj.fail = dict_block[block_json[u'fail'] + 1][0]
+                            except KeyError:
+                                try: 
+                                    block_obj.fail = dict_block[block_json[u'fail'] - 1][0]
+                                except KeyError:
+                                    #dear god why
+                                    try:
+                                        block_obj.fail = dict_block[block_json[u'fail'] + 2][0]
+                                    except KeyError:
+                                        try:
+                                            block_obj.fail = dict_block[block_json[u'fail'] - 2][0]
+                                        except KeyError:
+                                            print "idk nigga 1"
+
+                    if u'jump' in block_json:
+                        try:
+                            block_obj.jump = dict_block[block_json[u'jump']][0]
+                        except KeyError:
+                            try:
+                                block_obj.jump = dict_block[block_json[u'jump'] + 1][0]
+                            except KeyError:
+                                try:
+                                    block_obj.jump = dict_block[block_json[u'jump'] - 1][0]
+                                except KeyError:
+                                    try:
+                                        block_obj.jump = dict_block[block_json[u'jump'] - 2][0]
+                                    except KeyError:
+                                        try:
+                                            block_obj.jump = dict_block[block_json[u'jump'] + 2][0]
+                                        except KeyError:
+                                            print "idk nigga 2"
+                self.first = dict_block[blocks[000][u'offset']][0]
+            else:
+                raise KeyError()
+        else: 
+            raise KeyError()
+
+    def __str__(self):
+        ret = ""
+        node = self.first
+        while node is not None:
+            ret += "{}\n".format(node)
+            if node.fail:
+                node = node.fail
+            else:
+                node = node.jump
+
+        return ret              
+
+    def get_feature(self):
+        return "WIP"
+
 class function:
-    parents ={}
     base_addr = 0x0 # address of the function
     json = ""      # json representation of function pointed to
     dot = ""       # dot representation of function pointed to
-    children = {}
-    graph = None # graphviz graph file
 
-    def __init__(self, base_addr):
+    def __init__(self, base_addr, cfg):
         self.base_addr = base_addr
-        self.graph = nx.Graph()
+        self.children = {}
+        self.parents = {}
+        self.cfg = cfg
 
     def __str__(self):
-        ret = "Root: 0x{} ".format(self.base_addr)
+        ret = "Root: {} ".format(self.base_addr)
         for addr, child in self.children.items():
             ret = ret + " {}".format(child)
         return ret
@@ -38,108 +163,6 @@ class function:
     def push_child(self, func):
         self.children[func.base_addr] = func
 
-# -------- Output analyzed caller graphs to files
-# - Files are in a hierarchy - top level is the "caller" function
-# - next level down is the address of each "callee" jump
-# - final level is the dot and json of the callee jump 
-def output_graphs(callers, r2):
-
-        # first, generate a supergraph of all nodes for each caller
-        for func, func_caller in callers.items():
-            logging.info ("Func: 0x{:04x} Caller: {}".format(func, func_caller))
-            for addr, callee in func_caller.callees.items():
-                logging.info ("Addr: 0x{:04x} Callee: {}".format(addr, callee))
-
-        for func, func_caller in callers.items():
-           
-            func_str = '0x{:04x}'.format(func)
-        
-            logging.info("Seeking to address {} in radare.".format(func_str))
-            r2.cmd("s {}".format(func_str))
-            logging.debug("Current addr: {}".format(r2.cmd("s")))  # seek to the address of this func
-            logging.info("Creating main caller JSON, Disassembly")
-            r2.cmd('af-')# clean analysis data
-            r2.cmd('aa')
-            #r2.cmd('af')
-            #r2.cmd('sp')
-            func_caller.json = r2.cmd('agdj') # pull JSON disassembly from R2
-            func_caller.dot = r2.cmd('agd')  # pull dot for function from R2
-        
-            func_caller.graph = nx_agraph.from_agraph(pygraphviz.AGraph(func_caller.dot)) # pull graph into networkx
-
-            new_path = '{}-{}'.format(func_str, func_caller.count)
-
-            if not os.path.exists(new_path):
-                os.makedirs(new_path)
-            if not os.curdir == new_path:
-                os.chdir(new_path)
-
-            proc_string = "gvpack -o {}/{}_master.dot {}/{}.dot".format(new_path, func_str, new_path, func_str)
-
-            #logging.debug("Path object for CALLER: {}".format(new_path))
-            f1 = open ("{}.json".format(func_str), "w")
-            f2 = open("{}.dot".format(func_str), "w")
-            f1.write(func_caller.json)
-            f2.write(func_caller.dot)
-            f1.close()
-            f2.close()
-
-            for addr, callee in func_caller.callees.items():
-
-                try: 
-                    addr_str = str('0x{:04x}'.format(callee.dest_addr))
-                except ValueError:
-                    addr_str = str('0x{}'.format(callee.dest_addr))
-
-                r2.cmd("s {}".format(addr_str))
-                logging.debug("Current addr: {}".format(r2.cmd("s")))  # seek to the address of this func
-
-                r2.cmd('af-')# clean analysis data
-                r2.cmd('aa')           
-                #r2.cmd('af')
-                #r2.cmd('sp') # seek to func identified here
-
-                callee.json = r2.cmd('agdj')
-                callee.dot = r2.cmd('agd') 
-
-                sub_path = '{}'.format(addr_str)
-
-                callee.graph = nx_agraph.from_agraph(pygraphviz.AGraph(callee.dot)) # pull graph into networkx
-
-                if not os.path.exists(sub_path):
-                    os.makedirs(sub_path)  
-
-                os.chdir(sub_path)
-
-                proc_string = proc_string + (" {}/{}/{}.dot".format(new_path, '0x{:04x}'.format(addr), sub_path))
-
-                f3 = open ("{}.json".format(sub_path), "w")
-                f4 = open("{}.dot".format(sub_path), "w")
-                check_call(['dot','-Tpng', '-o', "{}.png".format(sub_path),"{}.dot".format(sub_path)])
-
-                f3.write(callee.json)
-                f4.write(callee.dot)
-                #callee.graph = nx_agraph.read_dot(f4)
-                #caller.master = nx.compose(func_caller.graph, callee.graph)
-
-                f3.close()
-                f4.close()
-                os.chdir("..")
-
-            #print proc_string
-            #process = subprocess.Popen(proc_string.split(), stdout=subprocess.PIPE)
-            #output, error = process.communicate()
-            #logging.info(output)
-            #logging.debug(error)
-            os.chdir("..")
-
-           # print func_caller.dot
-            # print func_caller.graph.edges()
-            # print func_caller.master.edges()
-
-        cwd = os.getcwd()
-        os.chdir(cwd)
-        return callers    
 
 # locates the reset vector address from a valid M7700 binary
 # using a currently open radare2 session
@@ -157,27 +180,48 @@ def get_rst(r2):
 
     return rst
 
-# grab all child function calls from a function analysis in R2
+# Helper function for recursive_parse_func
+# grabs all child function calls from a function analysis in R2
 def get_children(child_str):
     splitln_str = child_str.splitlines()
     #children = {}
 #    for line in splitln_str:
     p = ur"JSR.*(0x[0-9a-fA-F]{4})"
     children = re.findall(p, child_str)
-
+    int_children = list()
     for child in children:
-        print("child: {}".format(child))
-    return children
+       print("child: {}".format(child))
+       int_children.append(int(child, 16))
+    return int_children
+
+# helper function for recursive parse func
+# popluates 
+def populate_cfg(addr, func_json):
+    #func_json = r'{}'.format(func_json)
+    json_obj = json.loads('{}'.format(func_json.decode('utf-8', 'ignore').encode('utf-8')), strict=False)
+
+    #first = block(json_obj['offset'], json_obj['blocks']['ops'])
+    cfg = CFG(json_obj)
+    print (
+        '{}'.format(cfg))
+#    for entry in json_obj:
+#        for block in entry['blocks']:
+#            print "Entry: {} \n".format(block)
+
+    # parse the func json, populate the sequence instruction data types and blocks
+
+    return cfg
 
 # recursively parses a binary, given address 
 def recursive_parse_func(addr, r2):
 
-    func = function(addr)
     r2.cmd("s {}".format(addr))     # seek to address
     r2.cmd("aa")                    # analyze at address
+    cfg = populate_cfg(addr, r2.cmd("agj"))
+    func = function(addr, cfg)
     #func.func_str = r2.cmd("pdf")        # print func disassembly
     child_str = r2.cmd("pdf")          # grab list of func params
-    func.dot = r2.cmd("agd")              # grab dot of func from r2
+    #func.dot = r2.cmd("agd")              # grab dot of func from r2
 
     children = get_children(child_str) # pull children from func list
 
