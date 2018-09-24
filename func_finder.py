@@ -18,6 +18,9 @@ from datetime import datetime
 
 # template for all function data types
 
+visited = list()
+last_visited = {}
+
 class instruction:
 
     def __init__(self, base_addr, opcode):
@@ -90,38 +93,38 @@ class CFG:
                         try:
                             block_obj.fail = dict_block[block_json[u'fail']][0]
                         except KeyError:
-                            try:
-                                block_obj.fail = dict_block[block_json[u'fail'] + 1][0]
-                            except KeyError:
-                                try: 
-                                    block_obj.fail = dict_block[block_json[u'fail'] - 1][0]
-                                except KeyError:
-                                    #dear god why
-                                    try:
-                                        block_obj.fail = dict_block[block_json[u'fail'] + 2][0]
-                                    except KeyError:
-                                        try:
-                                            block_obj.fail = dict_block[block_json[u'fail'] - 2][0]
-                                        except KeyError:
-                                            print "idk nigga 1"
+                            continue
+                            # try:
+                            #     block_obj.fail = dict_block[block_json[u'fail'] + 1][0]
+                            # except KeyError:
+                            #     try: 
+                            #         block_obj.fail = dict_block[block_json[u'fail'] - 1][0]
+                            #     except KeyError:
+                            #         #dear god why
+                            #         try:
+                            #             block_obj.fail = dict_block[block_json[u'fail'] + 2][0]
+                            #         except KeyError:
+                            #             try:
+                            #                 block_obj.fail = dict_block[block_json[u'fail'] - 2][0]
+                            #             except KeyError:
 
                     if u'jump' in block_json:
                         try:
                             block_obj.jump = dict_block[block_json[u'jump']][0]
                         except KeyError:
-                            try:
-                                block_obj.jump = dict_block[block_json[u'jump'] + 1][0]
-                            except KeyError:
-                                try:
-                                    block_obj.jump = dict_block[block_json[u'jump'] - 1][0]
-                                except KeyError:
-                                    try:
-                                        block_obj.jump = dict_block[block_json[u'jump'] - 2][0]
-                                    except KeyError:
-                                        try:
-                                            block_obj.jump = dict_block[block_json[u'jump'] + 2][0]
-                                        except KeyError:
-                                            print "idk nigga 2"
+                            continue
+                            # try:
+                            #     block_obj.jump = dict_block[block_json[u'jump'] + 1][0]
+                            # except KeyError:
+                            #     try:
+                            #         block_obj.jump = dict_block[block_json[u'jump'] - 1][0]
+                            #     except KeyError:
+                            #         try:
+                            #             block_obj.jump = dict_block[block_json[u'jump'] - 2][0]
+                            #         except KeyError:
+                            #             try:
+                            #                 block_obj.jump = dict_block[block_json[u'jump'] + 2][0]
+                            #             except KeyError:
                 self.first = dict_block[blocks[000][u'offset']][0]
             else:
                 raise KeyError()
@@ -155,7 +158,7 @@ class function:
         self.cfg = cfg
 
     def __str__(self):
-        ret = "Root: {} ".format(self.base_addr)
+        ret = "0x{:04x}\n".format(self.base_addr)
         for addr, child in self.children.items():
             ret = ret + " {}".format(child)
         return ret
@@ -183,15 +186,18 @@ def get_rst(r2):
 # Helper function for recursive_parse_func
 # grabs all child function calls from a function analysis in R2
 def get_children(child_str):
-    splitln_str = child_str.splitlines()
-    #children = {}
-#    for line in splitln_str:
     p = ur"JSR.*(0x[0-9a-fA-F]{4})"
     children = re.findall(p, child_str)
+    p = ur"BRA.*(0x[0-9a-fA-F]{4})"
+    children.extend(re.findall(p, child_str))
     int_children = list()
     for child in children:
-       print("child: {}".format(child))
-       int_children.append(int(child, 16))
+        logging.debug("child: {}".format(child))
+        try:
+            int_children.append(int(child, 16))
+        except TypeError:
+            continue
+    del children
     return int_children
 
 # helper function for recursive parse func
@@ -215,21 +221,20 @@ def populate_cfg(addr, func_json):
 # recursively parses a binary, given address 
 def recursive_parse_func(addr, r2):
 
-    r2.cmd("s {}".format(addr))     # seek to address
+    r2.cmd("s 0x{:04x}".format(addr))     # seek to address
     r2.cmd("aa")                    # analyze at address
     cfg = populate_cfg(addr, r2.cmd("agj"))
     func = function(addr, cfg)
-    #func.func_str = r2.cmd("pdf")        # print func disassembly
     child_str = r2.cmd("pdf")          # grab list of func params
-    #func.dot = r2.cmd("agd")              # grab dot of func from r2
 
     children = get_children(child_str) # pull children from func list
 
-    # ideally this eventually stops, though it likely won't
+    # need to make this recursion stop properly
     for child_addr in children:
+        visited.append(child_addr)
         child = recursive_parse_func(child_addr, r2)
-        child.parents[addr] = func         # store reference to parent in child object
-        func.push_child(child) # store the child in the base func object
+        child.parents[addr] = func          # store reference to parent in child object
+        func.push_child(child)              # store the child in the base func object        
 
     return func
 
@@ -240,6 +245,7 @@ def recursive_parse_func(addr, r2):
 def parse_rom(infile):
     
     print("Loading '{}' into R2...".format(infile))
+    global r2 
     r2 = r2pipe.open(infile)           # load infile into R2 - error if not found
     if r2:                             # assert the R2 file opened correctly
         r2.cmd('e asm.arch=m7700')     # set the architecture env variable
