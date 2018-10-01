@@ -212,18 +212,8 @@ def get_children(child_str):
 # helper function for recursive parse func
 # popluates 
 def populate_cfg(addr, func_json):
-    #func_json = r'{}'.format(func_json)
     json_obj = json.loads('{}'.format(func_json.decode('utf-8', 'ignore').encode('utf-8')), strict=False)
-
-    #first = block(json_obj['offset'], json_obj['blocks']['ops'])
     cfg = CFG(json_obj)
-    print (
-        '{}'.format(cfg))
-#    for entry in json_obj:
-#        for block in entry['blocks']:
-#            print "Entry: {} \n".format(block)
-
-    # parse the func json, populate the sequence instruction data types and blocks
 
     return cfg
 
@@ -235,8 +225,9 @@ def recursive_parse_func(addr, r2):
     cfg = populate_cfg(addr, r2.cmd("agj"))
     func = function(addr, cfg)
     child_str = r2.cmd("pdf")          # grab list of func params
-
     children = get_children(child_str) # pull children from func list
+    if not (addr in visited.keys()):
+        visited[addr] = func
 
     # need to make this recursion stop properly
     for child_addr in children:
@@ -244,6 +235,7 @@ def recursive_parse_func(addr, r2):
         if child_addr in visited.keys(): # we don't need to recursively parse a function's children if it's already parsed
             visited[child_addr].parents[addr] = func          # store reference to parent in child object
             func.push_child(visited[child_addr])              # store the child in the base func object        
+
         else:
             visited[child_addr] = recursive_parse_func(child_addr, r2)
             visited[child_addr].parents[addr] = func          # store reference to parent in child object
@@ -253,11 +245,13 @@ def recursive_parse_func(addr, r2):
 
 # Creates an array of hashed features representing the instruction grams of each block within a function
 def grab_features(func, visited):
+
     func_dict = {}
+
     if func in visited:
         return func_dict
 
-    func_dict[func.base_addr] = get_signature(func.cfg.first, [])
+    func_dict[ur"{}".format(func.base_addr)] = ur"{}".format(get_signature(func.cfg.first, []))
     visited.append(func)
 
     for child in func.children.values():
@@ -284,7 +278,17 @@ def get_signature(block, visited):
 
 def get_json(feature_dict):
     
-    return json.dumps(ur"{}".format(feature_dict))
+    ret = ""
+    for k, v in feature_dict.iteritems():
+        print "Key: {}\nVal: {}\n".format(k, v)
+        
+    ret = json.dumps(feature_dict)
+    pr = json.loads(ret)
+
+    for val in ret:
+        print val
+
+    return json.dumps(feature_dict)
 
 # this method is responsible for
 # - automatically parsing the rom file for functions
@@ -309,9 +313,9 @@ def parse_rom(infile):
         logging.info ("R2 seeked to address {}".format(r2.cmd("s")))
         func = recursive_parse_func(rst, r2)
         feature_dictionary = grab_features(func, [])
-        
-        json_string = get_json(feature_dictionary)
-        logging.debug(pprint.pformat(json_string))
+        print feature_dictionary
+        #json_string = get_json(feature_dictionary)
+        #logging.debug(pprint.pformat(json_string))
     else: 
         print("Error parsing R2")
     r2.quit()
@@ -342,22 +346,27 @@ def main ():
 
     args = parser.parse_args()
     jsons = {}
-    out = open("file.json", 'w')
+
     for infile in args.filename:
         if infile is not None:
             print("Opening file: {}".format(infile))
 
         feature_dict = parse_rom(infile)
-        jsons[infile] = ur"{}".format(feature_dict)
+        jsons[infile] = feature_dict
         # do ROM-level analysis with R2pipe
-        out.write(json.dumps(jsons))
-        out.close()
-        if (os.path.isfile(infile)):
-            if args.output: # only output if specified
-                out.write(json.dumps(jsons))
-                out.close
-        else: 
-            print ("File '{}' not found".format(infile))
+
+    with open('file.json', 'w') as out:
+        json.dump(jsons, out)
+        
+    out.close()
+
+#        if (os.path.isfile(infile)):
+#            if args.output: # only output if specified
+#                with out as
+#                out.write(json.dump(jsons))
+#                out.close
+#        else: 
+#            print ("File '{}' not found".format(infile))
 
 # start
 main()
