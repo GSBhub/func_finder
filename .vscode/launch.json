@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["/home/greg/Documents/Graphs/Files/EG33/742521-1994-USDM-SVX-EG33.bin", "/home/greg/Documents/Graphs/Files/EJ18/753C21-1995-USDM-Impreza-EJ18"]
+            "args": ["/home/greg/Documents/ROMs/EJ18/EU/703943-1990-Euro-Legacy-EJ18.bin", "/home/greg/Documents/ROMs/EG33/USDM/742521-1994-USDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EJ18/USDM/753C21-1995-USDM-Impreza-EJ18.bin"]
 
         },
         {

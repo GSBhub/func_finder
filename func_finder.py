@@ -72,8 +72,11 @@ class CFG:
     first = None 
 
     def __init__(self, json):
-        self.json = json[0]
-        if u'offset' in json[0]:
+        if json:
+            self.json = json[0]
+        else:
+            self.json = ""
+        if u'offset' in self.json:
             self.base_addr = json[0][u'offset']
             if u'blocks' in json[0]:
                 blocks = json[0][u'blocks']
@@ -99,45 +102,18 @@ class CFG:
                         try:
                             block_obj.fail = dict_block[block_json[u'fail']][0]
                         except KeyError:
-                            #logging.debug("Block failure: 0x{:04x}\n".format(block_json[u'fail'])) 
                             continue
-                            # try:
-                            #     block_obj.fail = dict_block[block_json[u'fail'] + 1][0]
-                            # except KeyError:
-                            #     try: 
-                            #         block_obj.fail = dict_block[block_json[u'fail'] - 1][0]
-                            #     except KeyError:
-                            #         #dear god why
-                            #         try:
-                            #             block_obj.fail = dict_block[block_json[u'fail'] + 2][0]
-                            #         except KeyError:
-                            #             try:
-                            #                 block_obj.fail = dict_block[block_json[u'fail'] - 2][0]
-                            #             except KeyError:
 
                     if u'jump' in block_json:
                         try:
                             block_obj.jump = dict_block[block_json[u'jump']][0]
                         except KeyError:
-                            #logging.debug("Block failure: 0x{:04x}\n".format(block_json[u'jump'])) 
                             continue
-                            # try:
-                            #     block_obj.jump = dict_block[block_json[u'jump'] + 1][0]
-                            # except KeyError:
-                            #     try:
-                            #         block_obj.jump = dict_block[block_json[u'jump'] - 1][0]
-                            #     except KeyError:
-                            #         try:
-                            #             block_obj.jump = dict_block[block_json[u'jump'] - 2][0]
-                            #         except KeyError:
-                            #             try:
-                            #                 block_obj.jump = dict_block[block_json[u'jump'] + 2][0]
-                            #             except KeyError:
                 self.first = dict_block[blocks[000][u'offset']][0]
-            else:
-                raise KeyError()
-        else: 
-            raise KeyError()
+            #else:      
+                #raise KeyError()
+        #else: 
+            #raise KeyError()
 
     def __str__(self):
         ret = ""
@@ -221,7 +197,7 @@ def populate_cfg(addr, func_json):
 def recursive_parse_func(addr, r2):
 
     r2.cmd("s 0x{:04x}".format(addr))     # seek to address
-    r2.cmd("aa")                    # analyze at address
+    r2.cmd("aaa")                    # analyze at address
     cfg = populate_cfg(addr, r2.cmd("agj"))
     func = function(addr, cfg)
     child_str = r2.cmd("pdf")          # grab list of func params
@@ -243,6 +219,28 @@ def recursive_parse_func(addr, r2):
 
     return func
 
+def func_parse_str(func_str):
+    ret = []
+    fs = func_str.splitlines()
+    for line in fs:
+        try:
+            addr = int(line[:10], 16)
+        except TypeError:
+            continue
+        if addr and addr >= 0x6000:
+            ret.append(addr)
+
+    return ret
+
+def linear_parse_func(func, r2):
+    func_list = []
+    func_str = r2.cmd('afl') # pull a complete list of functions
+    l = func_parse_str(func_str)
+    for addr in l:
+        func_list.append(recursive_parse_func(addr, r2)) # attempt to manually parse each address
+
+    return func_list
+
 # Creates an array of hashed features representing the instruction grams of each block within a function
 def grab_features(func, visited):
 
@@ -262,9 +260,9 @@ def grab_features(func, visited):
 # return a list of hash values for an entire function
 def get_signature(block, visited):
     result = []
-    if block in visited: # Ignore blocks we've already resited
+    if block is None or block in visited: # Ignore blocks we've already resited
         return result
-
+    
     result.extend(block.get_seq_inst())
     visited.append(block)
 
@@ -279,8 +277,6 @@ def get_signature(block, visited):
 def get_json(feature_dict):
     
     ret = ""
-    for k, v in feature_dict.iteritems():
-        print "Key: {}\nVal: {}\n".format(k, v)
         
     ret = json.dumps(feature_dict)
     pr = json.loads(ret)
@@ -297,8 +293,11 @@ def get_json(feature_dict):
 def parse_rom(infile):
     
     print("Loading '{}' into R2...".format(infile))
-    global r2 
-    r2 = r2pipe.open(infile)           # load infile into R2 - error if not found
+     
+    try:
+        r2 = r2pipe.open(infile)           # load infile into R2 - error if not found
+    except IOError:
+        print "R2 Couldn't open file {}\n".format(infile)
     if r2:                             # assert the R2 file opened correctly
         r2.cmd('e asm.arch=m7700')     # set the architecture env variable
         logging.info("R2 loaded arch: " + r2.cmd('e asm.arch')) # check that arch loaded properly
@@ -312,10 +311,15 @@ def parse_rom(infile):
 
         logging.info ("R2 seeked to address {}".format(r2.cmd("s")))
         func = recursive_parse_func(rst, r2)
-        feature_dictionary = grab_features(func, [])
-        print feature_dictionary
-        #json_string = get_json(feature_dictionary)
-        #logging.debug(pprint.pformat(json_string))
+        func_list = []
+        func_list.append(func)
+        func_list.extend(linear_parse_func(func, r2))
+        feature_dictionary = {}
+        for funcs in func_list:
+            feature_dictionary.update(grab_features(funcs, []))
+
+        global visited 
+        visited = {} # clear the global visited struct
     else: 
         print("Error parsing R2")
     r2.quit()
@@ -352,11 +356,11 @@ def main ():
             print("Opening file: {}".format(infile))
 
         feature_dict = parse_rom(infile)
-        jsons[infile] = feature_dict
-        # do ROM-level analysis with R2pipe
+        jsons[infile] = feature_dict # do ROM-level analysis with R2pipe
 
     with open('file.json', 'w') as out:
-        json.dump(jsons, out)
+        #json.dump(jsons, out)
+        json.dump(jsons, out, indent=4, sort_keys=True)
         
     out.close()
 
