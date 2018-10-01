@@ -11,6 +11,8 @@ import re
 import subprocess
 import networkx as nx
 import pygraphviz
+import md5
+import pprint
 from collections import OrderedDict
 from networkx.drawing import nx_agraph
 from subprocess import check_call
@@ -18,7 +20,7 @@ from datetime import datetime
 
 # template for all function data types
 
-visited = list()
+visited = {}
 last_visited = {}
 
 class instruction:
@@ -46,9 +48,13 @@ class block:
         self.seq_inst = {}
         for op in seq_json:
             self.seq_inst[op[u'offset']] = instruction(op[u'offset'], op[u'opcode'])
- 
-    def get_seq_opcode(self): 
-        return "WIP"    
+
+    # returns a hash of the instructions
+    def get_seq_inst(self): 
+        temp = ""
+        for instruction in self.seq_inst.values():
+            temp = temp + "{}".format(instruction.opcode)
+        return {md5.new(temp).digest()}
     
     def print_inst(self):
         for instruction in self.seq_inst.itervalues():
@@ -93,6 +99,7 @@ class CFG:
                         try:
                             block_obj.fail = dict_block[block_json[u'fail']][0]
                         except KeyError:
+                            #logging.debug("Block failure: 0x{:04x}\n".format(block_json[u'fail'])) 
                             continue
                             # try:
                             #     block_obj.fail = dict_block[block_json[u'fail'] + 1][0]
@@ -112,6 +119,7 @@ class CFG:
                         try:
                             block_obj.jump = dict_block[block_json[u'jump']][0]
                         except KeyError:
+                            #logging.debug("Block failure: 0x{:04x}\n".format(block_json[u'jump'])) 
                             continue
                             # try:
                             #     block_obj.jump = dict_block[block_json[u'jump'] + 1][0]
@@ -158,9 +166,10 @@ class function:
         self.cfg = cfg
 
     def __str__(self):
+        
         ret = "0x{:04x}\n".format(self.base_addr)
-        for addr, child in self.children.items():
-            ret = ret + " {}".format(child)
+        for child in self.children.values():
+            ret += "\t{}".format(child)
         return ret
 
     def push_child(self, func):
@@ -188,15 +197,15 @@ def get_rst(r2):
 def get_children(child_str):
     p = ur"JSR.*(0x[0-9a-fA-F]{4})"
     children = re.findall(p, child_str)
-    p = ur"BRA.*(0x[0-9a-fA-F]{4})"
-    children.extend(re.findall(p, child_str))
+    #p = ur"BRA.*(0x[0-9a-fA-F]{4})"
+    #children.extend(re.findall(p, child_str))
     int_children = list()
     for child in children:
         logging.debug("child: {}".format(child))
         try:
             int_children.append(int(child, 16))
         except TypeError:
-            continue
+            print (child)
     del children
     return int_children
 
@@ -231,12 +240,51 @@ def recursive_parse_func(addr, r2):
 
     # need to make this recursion stop properly
     for child_addr in children:
-        visited.append(child_addr)
-        child = recursive_parse_func(child_addr, r2)
-        child.parents[addr] = func          # store reference to parent in child object
-        func.push_child(child)              # store the child in the base func object        
+
+        if child_addr in visited.keys(): # we don't need to recursively parse a function's children if it's already parsed
+            visited[child_addr].parents[addr] = func          # store reference to parent in child object
+            func.push_child(visited[child_addr])              # store the child in the base func object        
+        else:
+            visited[child_addr] = recursive_parse_func(child_addr, r2)
+            visited[child_addr].parents[addr] = func          # store reference to parent in child object
+            func.push_child(visited[child_addr])              # store the child in the base func object        
 
     return func
+
+# Creates an array of hashed features representing the instruction grams of each block within a function
+def grab_features(func, visited):
+    func_dict = {}
+    if func in visited:
+        return func_dict
+
+    func_dict[func.base_addr] = get_signature(func.cfg.first, [])
+    visited.append(func)
+
+    for child in func.children.values():
+        func_dict.update(grab_features(child, visited))
+
+    return func_dict
+
+# return a list of hash values for an entire function
+def get_signature(block, visited):
+    result = []
+    if block in visited: # Ignore blocks we've already resited
+        return result
+
+    result.extend(block.get_seq_inst())
+    visited.append(block)
+
+    if block.jump:
+        result.extend(get_signature(block.jump, visited))
+
+    if block.fail:
+        result.extend(get_signature(block.fail, visited))
+
+    return result
+
+def get_json(feature_dict):
+    
+    return json.dumps(ur"{}".format(feature_dict))
 
 # this method is responsible for
 # - automatically parsing the rom file for functions
@@ -256,14 +304,19 @@ def parse_rom(infile):
         logging.info ("Binary reset vector located at 0x{:04x}".format(rst))
         logging.info ("Attempting to seek to reset vector...")
         r2.cmd("s 0x{:04x}".format(rst))
+        #r2.cmd('aaa')     # set the architecture env variable
+
         logging.info ("R2 seeked to address {}".format(r2.cmd("s")))
         func = recursive_parse_func(rst, r2)
-        print func
+        feature_dictionary = grab_features(func, [])
+        
+        json_string = get_json(feature_dictionary)
+        logging.debug(pprint.pformat(json_string))
     else: 
         print("Error parsing R2")
     r2.quit()
     print("Quitting R2...")
-    return func
+    return feature_dictionary
 
 # helper function to check if a string is a hex string or not
 def isHex(num): 
@@ -288,17 +341,21 @@ def main ():
     logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG)
 
     args = parser.parse_args()
-
+    jsons = {}
+    out = open("file.json", 'w')
     for infile in args.filename:
         if infile is not None:
             print("Opening file: {}".format(infile))
 
-        func = parse_rom(infile)
-
+        feature_dict = parse_rom(infile)
+        jsons[infile] = ur"{}".format(feature_dict)
         # do ROM-level analysis with R2pipe
+        out.write(json.dumps(jsons))
+        out.close()
         if (os.path.isfile(infile)):
             if args.output: # only output if specified
-                print ("WIP")
+                out.write(json.dumps(jsons))
+                out.close
         else: 
             print ("File '{}' not found".format(infile))
 
