@@ -4,13 +4,14 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python: Current File (Integrated Terminal)",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["/home/greg/Documents/ROMs/EJ18/EU/703943-1990-Euro-Legacy-EJ18.bin", "/home/greg/Documents/ROMs/EG33/USDM/742521-1994-USDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EJ18/USDM/753C21-1995-USDM-Impreza-EJ18.bin"]
+            "args": ["/home/greg/Documents/ROMs/EG33/USDM/742521-1994-USDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EJ22/EDM/703243-1991-EDM-Legacy-EJ22.bin"]
 
         },
         {

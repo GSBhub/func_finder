@@ -22,11 +22,12 @@ from datetime import datetime
 
 visited = {}
 last_visited = {}
+functions = []
 
 class instruction:
 
     def __init__(self, base_addr, opcode):
-        self.base_addr = base_addr
+        self.base_addr = hex(base_addr)
         params = opcode.split()
         self.opcode = params[0]
         self.params = params[1:]
@@ -44,18 +45,28 @@ class block:
     jump = None
 
     def __init__(self, base_addr, seq_json):
-        self.base_addr = base_addr
+        self.base_addr = hex(base_addr)
         self.seq_inst = {}
+
         for op in seq_json:
+
             self.seq_inst[op[u'offset']] = instruction(op[u'offset'], op[u'opcode'])
 
     # returns a hash of the instructions
     def get_seq_inst(self): 
-        temp = ""
+        temp = ur""
         for instruction in self.seq_inst.values():
-            temp = temp + "{}".format(instruction.opcode)
-        return {md5.new(temp).digest()}
+            temp = temp + ur"{}".format(instruction.opcode)
+        #logging.debug("block addr: {}, temp: {}\n".format(self.base_addr, temp))
+        return [(md5.new(temp).hexdigest())]
     
+    def ret_instruct_list(self):
+        temp = ur""
+        for instruction in self.seq_inst.values():
+            temp = temp + ur"{}".format(instruction.opcode)
+        #logging.debug("block addr: {}, temp: {}\n".format(self.base_addr, temp))
+        return [temp]
+
     def print_inst(self):
         for instruction in self.seq_inst.itervalues():
             print(instruction)
@@ -77,7 +88,7 @@ class CFG:
         else:
             self.json = ""
         if u'offset' in self.json:
-            self.base_addr = json[0][u'offset']
+            self.base_addr = hex(json[0][u'offset'])
             if u'blocks' in json[0]:
                 blocks = json[0][u'blocks']
                 dict_block = {}
@@ -136,7 +147,7 @@ class function:
     dot = ""       # dot representation of function pointed to
 
     def __init__(self, base_addr, cfg):
-        self.base_addr = base_addr
+        self.base_addr = hex(base_addr)
         self.children = {}
         self.parents = {}
         self.cfg = cfg
@@ -156,8 +167,11 @@ class function:
 # using a currently open radare2 session
 def get_rst(r2):
     r2.cmd("s 0xfffe")     # seek to the address for the reset vector (const for all of our binaries)
+    logging.debug("R2 Command used: 's 0xfffe'")
+
     big_endian = str(r2.cmd("px0")) # print last two bytes of rst vector
-    
+    logging.debug("R2 Command used: 'px0'")
+
     rst = 0x0
     
     if big_endian:
@@ -171,14 +185,15 @@ def get_rst(r2):
 # Helper function for recursive_parse_func
 # grabs all child function calls from a function analysis in R2
 def get_children(child_str):
-    p = ur"JSR.*(0x[0-9a-fA-F]{4})"
+    p = ur"JSR.*[^$](0x[0-9a-fA-F]{4})" # grab unrecognized funcs
     children = re.findall(p, child_str)
-    #p = ur"BRA.*(0x[0-9a-fA-F]{4})"
-    #children.extend(re.findall(p, child_str))
+    p1 = ur"JSR.*fcn.0000([0-9a-fA-F]{4})"
+    ch2 = re.findall(p1, child_str)
+    children.extend(ch2) # grab recognized funcs
+
     int_children = list()
     for child in children:
-        logging.debug("child: {}".format(child))
-        try:
+        try:    
             int_children.append(int(child, 16))
         except TypeError:
             print (child)
@@ -188,6 +203,7 @@ def get_children(child_str):
 # helper function for recursive parse func
 # popluates 
 def populate_cfg(addr, func_json):
+    
     json_obj = json.loads('{}'.format(func_json.decode('utf-8', 'ignore').encode('utf-8')), strict=False)
     cfg = CFG(json_obj)
 
@@ -196,12 +212,25 @@ def populate_cfg(addr, func_json):
 # recursively parses a binary, given address 
 def recursive_parse_func(addr, r2):
 
-    r2.cmd("s 0x{:04x}".format(addr))     # seek to address
-    r2.cmd("aaa")                    # analyze at address
-    cfg = populate_cfg(addr, r2.cmd("agj"))
-    func = function(addr, cfg)
+   # r2.cmd("af-") # scrub func data
+   # logging.debug("R2 Command used: 'af-'")
+
+    r2.cmd("0x{:04x}".format(addr))     # seek to address
+    logging.debug("R2 Command used: '0x{:04x}'".format(addr))
+
+    r2.cmd("aa")
+    logging.debug("R2 Command used: aa")
+
     child_str = r2.cmd("pdf")          # grab list of func params
+    logging.debug("R2 Command used: 'pdf'")
+
     children = get_children(child_str) # pull children from func list
+
+    cfg = populate_cfg(addr, r2.cmd("agj"))
+    logging.debug("R2 Command used: 'agj'")
+
+    func = function(addr, cfg)
+
     if not (addr in visited.keys()):
         visited[addr] = func
 
@@ -227,17 +256,21 @@ def func_parse_str(func_str):
             addr = int(line[:10], 16)
         except TypeError:
             continue
-        if addr and addr >= 0x6000:
+        if addr and addr >= 36864:
             ret.append(addr)
-
     return ret
 
 def linear_parse_func(func, r2):
     func_list = []
+    r2.cmd("af-")
+    r2.cmd("aaa")
     func_str = r2.cmd('afl') # pull a complete list of functions
+    logging.debug("R2 Command used: 'afl'")
+
     l = func_parse_str(func_str)
     for addr in l:
-        func_list.append(recursive_parse_func(addr, r2)) # attempt to manually parse each address
+        if addr not in visited.keys():
+            func_list.append(recursive_parse_func(addr, r2)) # attempt to manually parse each address
 
     return func_list
 
@@ -259,11 +292,14 @@ def grab_features(func, visited):
 
 # return a list of hash values for an entire function
 def get_signature(block, visited):
+
     result = []
     if block is None or block in visited: # Ignore blocks we've already resited
         return result
     
     result.extend(block.get_seq_inst())
+    #result.extend(block.ret_instruct_list())
+
     visited.append(block)
 
     if block.jump:
@@ -281,10 +317,30 @@ def get_json(feature_dict):
     ret = json.dumps(feature_dict)
     pr = json.loads(ret)
 
-    for val in ret:
-        print val
-
     return json.dumps(feature_dict)
+
+def get_start(infile):
+    addr = 0x0000
+
+    try:
+        r2 = r2pipe.open(infile, ["-2"])           # load infile into R2 - error if not found
+        r2.cmd("e asm.arch=m7700")
+        addr = 0
+        val = r2.cmd("/c CMP al #0xf0") # attempt to find the initial address
+        if val is "":
+            val = r2.cmd("/c CMP ax #0xf0f0") # attempt to find the initial address
+        vals = val.split()
+
+        try:
+            r2.cmd("s {}".format(vals[0]))
+        except IndexError:
+            None
+        addr = int(r2.cmd("s"),16)
+        r2.quit()
+
+    except IOError:
+        print "Could not locate start of binary"
+    return addr
 
 # this method is responsible for
 # - automatically parsing the rom file for functions
@@ -293,31 +349,74 @@ def get_json(feature_dict):
 def parse_rom(infile):
     
     print("Loading '{}' into R2...".format(infile))
-     
+    start = get_start(infile)
+
     try:
-        r2 = r2pipe.open(infile)           # load infile into R2 - error if not found
+        r2 = r2pipe.open(infile, ["-2"])           # load infile into R2 - error if not found
     except IOError:
         print "R2 Couldn't open file {}\n".format(infile)
     if r2:                             # assert the R2 file opened correctly
         r2.cmd('e asm.arch=m7700')     # set the architecture env variable
+        logging.debug("R2 Command used: 'e asm.arch=m7700'")
         logging.info("R2 loaded arch: " + r2.cmd('e asm.arch')) # check that arch loaded properly
 
-        # TODO: finish this
+        # first, attempt to generate a full graph from the reset vector
         rst = get_rst(r2) 
         logging.info ("Binary reset vector located at 0x{:04x}".format(rst))
-        logging.info ("Attempting to seek to reset vector...")
-        r2.cmd("s 0x{:04x}".format(rst))
-        #r2.cmd('aaa')     # set the architecture env variable
+        #logging.info ("Attempting to seek to reset vector...")
 
-        logging.info ("R2 seeked to address {}".format(r2.cmd("s")))
-        func = recursive_parse_func(rst, r2)
+        if (rst < start): # some RST vectors are located below the test fcn
+            start = rst
+
+        r2.cmd("e anal.hasnext=true")
+        r2.cmd("e anal.limits=true")
+        r2.cmd("e anal.from=0x{:04x}".format(start))
+        r2.cmd("e anal.to=0xff20") # fffe and ffff should be reserved, not functions
+        r2.cmd("e anal.split=false")
+        r2.cmd("e anal.bb.split=false")
+
+        logging.debug("e anal.hasnext: {}".format(r2.cmd("e anal.hasnext")))
+        logging.debug("e anal.limits: {}".format(r2.cmd("e anal.limits")))
+        logging.debug("e anal.from: {}".format(r2.cmd("e anal.from")))
+        logging.debug("e anal.to: {}".format(r2.cmd("e anal.to")))
+        logging.debug("e anal.split: {}".format(r2.cmd("e anal.split")))
+        logging.debug("e anal.bb.split: {}".format(r2.cmd("e anal.bb.split")))
+
+        #r2.cmd("e anal.bb.maxsize=0xffff")
+        #r2.cmd("e anal.recont")
+
+        #r2.cmd("e anal.brokenrefs=true") # dangerous
+
+        r2.cmd("s 0x{:04x}".format(rst))
+        r2.cmd("aa")     # run a full analysis on the whole binary 
+        logging.debug("R2 Command used: 'aa'")
+
+    #    r2.cmd("s 0x{:04x}".format(rst))
+    #    logging.debug("R2 Command used: 's 0x{:04x}'".format(rst))
+        #logging.info ("R2 seeked to address {}".format(r2.cmd("s")))
+
+        #r2.cmd("e anal.jmpabove=false")
+        #r2.cmd("e anal.eobjmp=true")
+        #r2.cmd("")
+
+        # build func from a recursive function parse
         func_list = []
-        func_list.append(func)
-        func_list.extend(linear_parse_func(func, r2))
+        func = None
+        try:
+           func = recursive_parse_func(rst, r2)
+           func_list.append(func)
+        except ValueError:
+           print ("Recursive disassembly parse for ROM failed.")
+        # then attempt to find additional functoins that were missed in the initial sweep with a recursive search
+        try:
+              func_list.extend(linear_parse_func(func, r2))
+        except ValueError:
+              print("Linear disassembly parse for ROM failed.")
         feature_dictionary = {}
         for funcs in func_list:
             feature_dictionary.update(grab_features(funcs, []))
 
+     #   functions.append(func_list)
         global visited 
         visited = {} # clear the global visited struct
     else: 
@@ -358,10 +457,10 @@ def main ():
         feature_dict = parse_rom(infile)
         jsons[infile] = feature_dict # do ROM-level analysis with R2pipe
 
+
     with open('file.json', 'w') as out:
-        #json.dump(jsons, out)
         json.dump(jsons, out, indent=4, sort_keys=True)
-        
+
     out.close()
 
 #        if (os.path.isfile(infile)):
