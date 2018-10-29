@@ -13,6 +13,7 @@ import networkx as nx
 import pygraphviz
 import md5
 import pprint
+import collections
 from collections import OrderedDict
 from networkx.drawing import nx_agraph
 from subprocess import check_call
@@ -46,7 +47,7 @@ class block:
 
     def __init__(self, base_addr, seq_json):
         self.base_addr = hex(base_addr)
-        self.seq_inst = {}
+        self.seq_inst = OrderedDict()
 
         for op in seq_json:
 
@@ -204,9 +205,9 @@ def get_children(child_str):
 # popluates 
 def populate_cfg(addr, func_json):
     
-    json_obj = json.loads('{}'.format(func_json.decode('utf-8', 'ignore').encode('utf-8')), strict=False)
+    #json_obj = json.loads('{}'.format(func_json.decode('utf-8', 'ignore').encode('utf-8')), strict=True, object_pairs_hook=collections.OrderedDict)
+    json_obj=json.loads(unicode(func_json, errors='ignore'), strict=False, object_pairs_hook=collections.OrderedDict)
     cfg = CFG(json_obj)
-
     return cfg
 
 # recursively parses a binary, given address 
@@ -314,10 +315,10 @@ def get_json(feature_dict):
     
     ret = ""
         
-    ret = json.dumps(feature_dict)
+    ret = OrderedDict(json.dumps(feature_dict))
     pr = json.loads(ret)
 
-    return json.dumps(feature_dict)
+    return ret
 
 def get_start(infile):
     addr = 0x0000
@@ -382,10 +383,8 @@ def parse_rom(infile):
         logging.debug("e anal.split: {}".format(r2.cmd("e anal.split")))
         logging.debug("e anal.bb.split: {}".format(r2.cmd("e anal.bb.split")))
 
-        #r2.cmd("e anal.bb.maxsize=0xffff")
+        r2.cmd("e anal.bb.maxsize=0xffff")
         #r2.cmd("e anal.recont")
-
-        #r2.cmd("e anal.brokenrefs=true") # dangerous
 
         r2.cmd("s 0x{:04x}".format(rst))
         r2.cmd("aa")     # run a full analysis on the whole binary 
@@ -403,15 +402,18 @@ def parse_rom(infile):
         func_list = []
         func = None
         try:
-           func = recursive_parse_func(rst, r2)
-           func_list.append(func)
+            func = recursive_parse_func(rst, r2)
+            func_list.append(func)
+
         except ValueError:
-           print ("Recursive disassembly parse for ROM failed.")
+           print ("Recursive disassembly parse for ROM failed:")
+       
         # then attempt to find additional functoins that were missed in the initial sweep with a recursive search
         try:
-              func_list.extend(linear_parse_func(func, r2))
+            func_list.extend(linear_parse_func(func, r2))
         except ValueError:
               print("Linear disassembly parse for ROM failed.")
+
         feature_dictionary = {}
         for funcs in func_list:
             feature_dictionary.update(grab_features(funcs, []))
