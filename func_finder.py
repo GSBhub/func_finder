@@ -213,26 +213,27 @@ def populate_cfg(addr, func_json):
 # recursively parses a binary, given address 
 def recursive_parse_func(addr, r2):
 
-   # r2.cmd("af-") # scrub func data
-   # logging.debug("R2 Command used: 'af-'")
-
     r2.cmd("0x{:04x}".format(addr))     # seek to address
     logging.debug("R2 Command used: '0x{:04x}'".format(addr))
 
     r2.cmd("aa")
     logging.debug("R2 Command used: aa")
 
+    r2.cmd("sf.")
+    addr = int(r2.cmd("s"), 16)
+
     child_str = r2.cmd("pdf")          # grab list of func params
     logging.debug("R2 Command used: 'pdf'")
 
     children = get_children(child_str) # pull children from func list
 
-    cfg = populate_cfg(addr, r2.cmd("agj"))
-    logging.debug("R2 Command used: 'agj'")
-
-    func = function(addr, cfg)
-
-    if not (addr in visited.keys()):
+    if addr in visited.keys():
+        func = visited[addr]
+        return func
+    else:
+        cfg = populate_cfg(addr, r2.cmd("agj"))
+        logging.debug("R2 Command used: 'agj'")
+        func = function(addr, cfg)
         visited[addr] = func
 
     # need to make this recursion stop properly
@@ -267,6 +268,7 @@ def linear_parse_func(func, r2):
     r2.cmd("aaa")
     func_str = r2.cmd('afl') # pull a complete list of functions
     logging.debug("R2 Command used: 'afl'")
+    #r2.cmd("af-")
 
     l = func_parse_str(func_str)
     for addr in l:
@@ -298,8 +300,8 @@ def get_signature(block, visited):
     if block is None or block in visited: # Ignore blocks we've already resited
         return result
     
-    result.extend(block.get_seq_inst())
-    #result.extend(block.ret_instruct_list())
+    #result.extend(block.get_seq_inst())
+    result.extend(block.ret_instruct_list())
 
     visited.append(block)
 
@@ -372,7 +374,7 @@ def parse_rom(infile):
         r2.cmd("e anal.hasnext=true")
         r2.cmd("e anal.limits=true")
         r2.cmd("e anal.from=0x{:04x}".format(start))
-        r2.cmd("e anal.to=0xff20") # fffe and ffff should be reserved, not functions
+        r2.cmd("e anal.to=0xffb5") # ffd0 onward are just vectors and should be reserved, not functions
         r2.cmd("e anal.split=false")
         r2.cmd("e anal.bb.split=false")
 
@@ -383,12 +385,12 @@ def parse_rom(infile):
         logging.debug("e anal.split: {}".format(r2.cmd("e anal.split")))
         logging.debug("e anal.bb.split: {}".format(r2.cmd("e anal.bb.split")))
 
-        r2.cmd("e anal.bb.maxsize=0xffff")
+        #r2.cmd("e anal.bb.maxsize=0xffff")
         #r2.cmd("e anal.recont")
 
-        r2.cmd("s 0x{:04x}".format(rst))
-        r2.cmd("aa")     # run a full analysis on the whole binary 
-        logging.debug("R2 Command used: 'aa'")
+        #r2.cmd("s 0x{:04x}".format(rst))
+        #r2.cmd("aaa")     # run a full analysis on the whole binary 
+        #logging.debug("R2 Command used: 'aaa'")
 
     #    r2.cmd("s 0x{:04x}".format(rst))
     #    logging.debug("R2 Command used: 's 0x{:04x}'".format(rst))
@@ -405,19 +407,22 @@ def parse_rom(infile):
             func = recursive_parse_func(rst, r2)
             func_list.append(func)
 
-        except ValueError:
-           print ("Recursive disassembly parse for ROM failed:")
+        except ValueError as valerr:
+            print valerr
+            print ("Recursive disassembly parse for ROM failed:")
        
         # then attempt to find additional functoins that were missed in the initial sweep with a recursive search
         try:
             func_list.extend(linear_parse_func(func, r2))
-        except ValueError:
-              print("Linear disassembly parse for ROM failed.")
+        except ValueError as valerr:
+            print valerr
+            print("Linear disassembly parse for ROM failed.")
 
         feature_dictionary = {}
         for funcs in func_list:
             feature_dictionary.update(grab_features(funcs, []))
 
+        print "test"
      #   functions.append(func_list)
         global visited 
         visited = {} # clear the global visited struct
