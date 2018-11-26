@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["/home/greg/Documents/ROMs/EG33/USDM/722527-1993-USDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EG33/JDM/722515-1992-JDM-SVX-EG33.bin"]
+            "args": ["/home/greg/Documents/ROMs/EG33/USDM/722527-1993-USDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EG33/USDM/722521-1991-USDM-SVX-EG33.bin"]
 
         },
         {
