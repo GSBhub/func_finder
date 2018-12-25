@@ -77,8 +77,13 @@ class block:
     # helper allows you to circumvent that
     def _get_instruction(self, index):
         iter = cycle(self._instruction_block.items())
-        for _ in range (0, index):
+
+        for _ in range (-1, index):
            ret = next(iter) 
+
+        if ret is None:
+            raise IndexError(index, "Index {} out of bounds.".format(index))
+        
         return ret[1]
 
     # Returns a hash of the instructions
@@ -93,22 +98,40 @@ class block:
         return [(md5.new(ret).hexdigest())]
 
     # Creates a list of all instructions for this block
-    # tokenized into two-gram blocks. Returns that list.
-    # Filter ignores the BRA instructions, leaving them out of gram creation
-    def _two_gram(self, filter, filter_list):
+    # tokenized into n-gram blocks. Returns that list.
+    # Filter ignores the BRA instructions, leaving them out of gram creation.
+    # Default program gram length: 2
+    # If the grams provided exceed the length for a list, only items matching that length will
+    # be added to the index. 
+    def _n_gram(self, n_grams, filter, filter_list, get_consts):
         ret = list()
-        cur = self._instruction_block.get(int(self._base_addr, 16))
+        opcodes = []
+        start = 0
+        # generate a filtered list of opcodes given the provided filter
         for key in self._instruction_block.keys():
-            if (key == int(self._base_addr, 16) 
-                or (filter and self._instruction_block[key]._opcode in filter_list)):
-                # skip the first instruction, or skip any instructions that are filtered
-                # if the variable filter is set to true
+            if (filter and self._instruction_block[key]._opcode in filter_list):
                 continue
             else:
-                # Create the gram with the current and previous instruction
-                ret.append(ur"{}{}".format(cur._opcode, 
-                                        self._instruction_block[key]._opcode))
-                cur = self._instruction_block.get(key)
+                opcodes.append(self._instruction_block[key]._opcode)
+                if get_consts:
+                    for param in self._instruction_block[key]._params:
+                        if "#" in param:
+                            opcodes.append(param)
+
+        # split that list into N-gram opcodes                       
+        for _ in opcodes:
+            gram = ur""
+            for i in range(start, n_grams + start):
+                if start + n_grams < len(opcodes):
+                    gram = ur"{}{}".format(gram, 
+                                        opcodes[i])
+                else: 
+                    break
+            start += 1
+            # append gram to list if it's not an empty value
+            if gram is not ur"":
+                ret.append(gram)
+
         return ret
 
     # Returns a list of the edges of this block, tokenized into two-gram sections
@@ -128,12 +151,13 @@ class block:
                     # attempt to find a valid instruction that is not in the filter list
                     if parent._get_instruction(len(parent._instruction_block) - _) not in filter_list:
                         parent_last_instruction = parent._get_instruction(len(parent._instruction_block) - _)._opcode
-                    else:
-                        _ += 1
-
-            ret.append(ur"{}{}".format(parent_last_instruction, 
-                current._opcode
-            ))
+                    _ += 1
+                    if _ > len(parent._instruction_block):
+                        break
+            if parent_last_instruction is not None:
+                ret.append(ur"{}{}".format(parent_last_instruction, 
+                    current._opcode
+                ))
 
         # add in child edges
         if self._jump is not None:
@@ -142,34 +166,38 @@ class block:
             if (filter and next_instr in filter_list):
                 _ = 0
                 next_instr = None
-                while next_instr is None:
+                while next_instr is None and _ <= len(self._jump._instruction_block):
                     # attempt to find a valid instruction that is not in the filter list
                     if self._jump._get_instruction(_)._opcode not in filter_list:
                         next_instr = self._jump._get_instruction(_)._opcode
-                    else:
-                        _ += 1
-            
-            ret.append(ur"{}{}".format(current._opcode, next_instr))
+                    _ += 1
+                    # if _ > len(self._jump._instruction_block):
+                    #     break
+            if next_instr is not None:
+                ret.append(ur"{}{}".format(current._opcode, next_instr))
             
         if self._fail is not None:
             next_instr = self._fail._instruction_block[int(self._fail._base_addr, 16)]._opcode
             if (filter and next_instr in filter_list):
                 _ = 0
                 next_instr = None
-                while next_instr is None:
+                while next_instr is None and _ <= len(self._fail._instruction_block):
                     # attempt to find a valid instruction that is not in the filter list
                     if self._fail._get_instruction(_)._opcode not in filter_list:
-                        parent_last_instruction = self._fail._get_instruction(_)._opcode
-                    else:
-                        _ += 1
-
-            ret.append(ur"{}{}".format(current._opcode, next_instr))
+                        next_instr = self._fail._get_instruction(_)._opcode
+                    _ += 1
+                    # if _ > len(self._fail._instruction_block):
+                    #     break
+            if next_instr is not None:
+                ret.append(ur"{}{}".format(current._opcode, next_instr))
             
         return ret
 
     # detects all previous features, but also looks for bottlenecks
     def bottlenecks(self):
-
+        # Very WIP
+        # TODO: find bottlenecks, analyze subgraphs, create feature vector out of that
+        # 
         ret = list()
         current = self._instruction_block.get(int(self._base_addr, 16))
         for key in self._instruction_block.keys():
@@ -200,10 +228,20 @@ class block:
 
         return ret
 
-    def _get_features(self, options):
+    # Main feature generation algorithm, parses args passed at run-time 
+    # and generates a complete feature vector using those params
+    # Full list of args can be located down by the main method
+    def _get_features(self, args):
         ret = []
-        ret.extend(self._edge_list(False, ["BRA"]))
-        ret.extend(self._two_gram(False, ["BRA"])) # placeholder values for now
+        ret.extend(self._n_gram(args.ngrams, args.ignore, ["BRA"], True)) # placeholder values for now
+
+        if args.edges:
+            ret.extend(self._edge_list(args.ignore, ["BRA"]))
+
+        # TODO: add additional command line args to parse
+        # - bottleneck/subgraph detection and parsing
+        # - additional features
+
         return ret
 
     def _print_inst(self):
@@ -381,7 +419,12 @@ def _get_children(child_str):
 # popluates CFG data structure for each function, given a valid func_json
 # TODO: find a more elegant way to handle errors when processing JSON, as can sometimes fail randomly
 def _populate_cfg(addr, func_json):
-    
+    # nice solution found at https://grimhacker.com/2016/04/24/loading-dirty-json-with-python/
+    # helps handle "dirty" JSON input
+    regex_replace = [(r"([ \{,:\[])(u)?'([^']+)'", r'\1"\3"'), (r" False([, \}\]])", r' false\1'), (r" True([, \}\]])", r' true\1')]
+    for r, s in regex_replace:
+        func_json = re.sub(r, s, func_json)
+
     json_obj = json.loads(unicode(func_json, errors='ignore'),
                           strict=False, object_pairs_hook=collections.OrderedDict)
     cfg = CFG(json_obj)
@@ -480,17 +523,6 @@ def _grab_features(func, visited, options):
         func_dict.update(_grab_features(child, visited, options))
 
     return func_dict
-
-# helper that returns a json object given a dictionary of our features
-# it is important that we use an ordereddict, otherwise the JSON module messes up order and reorders grams
-def _get_json(feature_dict):
-
-    ret = ""
-
-    ret = OrderedDict(json.dumps(feature_dict))
-    pr = json.loads(ret)
-
-    return ret
 
 # helper to attempt to locate the start of our M7700 binaries
 # very sloppy, but our start methods across each binary 
@@ -595,6 +627,14 @@ def _isHex(num):
     except ValueError:
         return False
 
+# Program Flag options
+# Default options - func_finder.py filename ...
+# Filename can be multiple options, each subsequent filename loads in an additional ROM
+# additional options:
+#   -o: outfile  - specify the name for the output JSON file
+#   -s: subgraph - attempt to analyze subgraphs of functions for match, instead of entire functions
+#   -n: grams    - specify the number of grams to break the software for an ECU into
+#   -i: ignore   - ignore certain instructions
 def main():
     # set up the parser first
     # default parser args - filename, opens file for JSON parsing
@@ -608,28 +648,30 @@ def main():
     parser.add_argument('-o', '--outfile', metavar='outfile', default="file.json", type=str,
                         help='Specify Filename')
 
-    # parser.add_argument('-s', '--subgraph', metavar='subgraph', default=False, action='store_const',
-    #                help='Attempt to analyze subgraphs of functions instead of entire functions')
+    parser.add_argument('-s', '--subgraph', metavar='subgraph', default=False, type=bool,
+                   help='Attempt to analyze subgraphs of functions instead of entire functions')
 
-    # parser.add_argument('-n', '--ngrams', metavar='ngrams', default=2, type=int,
-    #                help='Specify number of grams to break feature vectors into')
+    parser.add_argument('-n', '--ngrams', metavar='ngrams', default=2, type=int,
+                   help='Specify number of grams to break feature vectors into')
 
-    # parser.add_argument('-i', '--ignore', metavar='ignore', default=True, type=bool,
-    #                help='Ignore BRA instructions')
+    parser.add_argument('-i', '--ignore', metavar='ignore', default=True, type=bool,
+                   help='Ignore BRA instructions')
+    
+    parser.add_argument('-e', '--edges', metavar='edges', default=True, type=bool,
+                   help='Process edges')
 
     logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG)
 
     args = parser.parse_args()
     outfile = args.outfile
-
     jsons = {}
 
     for infile in args.filename:
         if infile is not None:
             print("Opening file: {}".format(infile))
 
-        feature_dict = _parse_rom(infile, None)
-        jsons[infile] = feature_dict  # do ROM-level analysis with R2pipe
+        feature_dict = _parse_rom(infile, args)
+        jsons[infile] = feature_dict 
 
     with open(outfile, 'w') as out:
         json.dump(jsons, out, indent=4, sort_keys=True)
