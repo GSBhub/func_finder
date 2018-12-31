@@ -191,41 +191,6 @@ class block:
             
         return ret
 
-    # detects all previous features, but also looks for bottlenecks
-    def bottlenecks(self):
-        # Very WIP
-        # TODO: find bottlenecks, analyze subgraphs, create feature vector out of that
-        # 
-        ret = list()
-        current = self._instruction_block.get(int(self._base_addr, 16))
-        for key in self._instruction_block.keys():
-            if key == int(self._base_addr, 16) or "BRA" in self._instruction_block[key]._opcode:
-                continue
-            else:
-
-                ret.append(ur"{}{}".format(current._opcode,
-                                           self._instruction_block[key]._opcode))
-                current = self._instruction_block.get(key)
-                # for param in instruction.params:
-                #     if "#" in param:
-                #         temp = temp + ur"{}".format(param)
-
-        if self._fail is not None:
-            ret.append(ur"{}{}".format(current._opcode, self._fail._instruction_block[int(
-                self._fail._base_addr, 16)]._opcode))
-
-        if self._jump is not None:
-            ret.append(ur"{}{}".format(current._opcode, self._jump._instruction_block[int(
-                self._jump._base_addr, 16)]._opcode))
-
-        if len(self._parents) >= 4:  # if block has 4 or more _parents, define as a bottleneck
-
-            for parent in self._parents:
-                ret.append(ur"{}{}".format(parent._instruction_block[int(
-                    parent._base_addr, 16)]._opcode, self._instruction_block[int(self._base_addr, 16)]._opcode))
-
-        return ret
-
     # Main feature generation algorithm, parses args passed at run-time 
     # and generates a complete feature vector using those params
     # Full list of args can be located down by the main method
@@ -316,6 +281,61 @@ class CFG:
                 node = node._fail
             else:
                 node = node._jump
+        return ret
+
+    # Bottleneck feature searching
+    # attempts to find "bottlenecks" - single conditional jumps with multiple parents
+    # default depth - 2
+    def _bottlenecks(self, args, depth=2):
+        # Very WIP
+        # TODO: find bottlenecks, analyze subgraphs, create feature vector out of that
+        # TODO: add in an optional depth detection
+        
+        ret = list() # feature list, containing grams back
+
+        # first - identify all bottlenecks within a function, store in list
+        bottlenecks = self._get_bottlenecks(self._first)
+
+        # then  - get features from bottlenecks of depth N back
+        for bottleneck in bottlenecks:
+            ret.extend(self._bottleneck_seek_back(bottleneck, depth, args))
+
+        return ret
+
+    # recursively traverses function CFG and gathers a list of all bottlenecks
+    def _get_bottlenecks(self, current):
+
+        ret = list()
+        if (len(current._parents) >= 4):  # if block has 4 or more _parents, define as a bottleneck
+            ret.append(current)
+
+        if current._fail is not None:
+            ret.extend(self._get_bottlenecks(current._fail))
+
+        if current._jump is not None:
+            ret.extend(self._get_bottlenecks(current._jump))
+
+        return ret
+
+    # recursively seeks back N blocks from bottleneck
+    # returns a list of all N-gram features including this block and any prior
+    def _bottleneck_seek_back(self, bottleneck, depth, args):
+
+        ret = list()
+        current = bottleneck
+
+        if depth == 0: # base condition
+            return
+
+        # add block's current features to ret
+        ret.extend(current._get_features(args.ngrams, args.ignore, ["BRA"], True))
+
+        # add in edge instruction for each parent
+        for parent in current._parents: 
+            ret.append(ur"{}{}".format(current._get_instruction(0)._opcode, 
+                parent._get_instruction(len(parent._instruction_block))))
+            ret.extend(self._bottleneck_seek_back(parent, depth - 1, args))
+
         return ret
 
 class function:
