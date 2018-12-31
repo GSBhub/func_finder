@@ -369,26 +369,29 @@ class function:
 
     # Master-function to grab features from block sub-classes
     # Returns a complete list of features for this entire function
-    def _get_features(self, options):
+    def _get_features(self, args):
         __visited = []
-        ret = self._get_features_helper(self._cfg._first, __visited, options)
+        if args.bottlenecks:
+            ret = self._cfg._bottlenecks(args, args.depth)
+        else:
+            ret = self._get_features_helper(self._cfg._first, __visited, args)
         return ret
 
     # recursive helper for _get_features
-    def _get_features_helper(self, block, __visited, options):
+    def _get_features_helper(self, block, __visited, args):
         ret = []
         if block is None or block in __visited:  
             # Ignore blocks we've already resited, base condition
             return ret
         # get feature list from block
-        ret.extend(block._get_features(options))
+        ret.extend(block._get_features(args))
         __visited.append(block)
 
         # grab features from block's children
         if block._jump is not None:
-            ret.extend(self._get_features_helper(block._jump, __visited, options))
+            ret.extend(self._get_features_helper(block._jump, __visited, args))
         if block._fail is not None:
-            ret.extend(self._get_features_helper(block._fail, __visited, options))
+            ret.extend(self._get_features_helper(block._fail, __visited, args))
         return ret
 
 # locates the reset vector address from a valid M7700 binary
@@ -526,18 +529,18 @@ def _linear_parse_func(func, visited, r2):
     return func_list
 
 # Creates an array of hashed features representing the instruction grams of each block within a function
-def _grab_features(func, visited, options):
+def _grab_features(func, visited, args):
 
     func_dict = {}
     if func in visited:
         return func_dict
 
-    sig = func._get_features(options)
+    sig = func._get_features(args)
     func_dict[ur"{}".format(func._base_addr)] = ur"{}".format(sig)
     visited.append(func)
 
     for child in func._children.values():
-        func_dict.update(_grab_features(child, visited, options))
+        func_dict.update(_grab_features(child, visited, args))
 
     return func_dict
 
@@ -572,7 +575,7 @@ def _get_start(infile):
 # - automatically parsing the rom file for functions
 # - generating a graph from said functions
 # - loading that graph into memory
-def _parse_rom(infile, options):
+def _parse_rom(infile, args):
 
     visited = {}
     print("Loading '{}' into R2...".format(infile))
@@ -624,9 +627,10 @@ def _parse_rom(infile, options):
             print valerr
             print("Linear disassembly parse for ROM failed.")
         feature_dictionary = {}
+
         for funcs in func_list:
             # pass the functions, an empty list (visited), and our option flags to the feature parser
-            feature_dictionary.update(_grab_features(funcs, [], options))
+            feature_dictionary.update(_grab_features(funcs, [], args))
 
         # functions.append(func_list)
         
@@ -664,10 +668,7 @@ def main():
 
     parser.add_argument('-o', '--outfile', metavar='outfile', default="file.json", type=str,
                         help='Specify Filename')
-
-    parser.add_argument('-s', '--subgraph', metavar='subgraph', default=False, type=bool,
-                   help='Attempt to analyze subgraphs of functions instead of entire functions')
-
+                        
     parser.add_argument('-n', '--ngrams', metavar='ngrams', default=2, type=int,
                    help='Specify number of grams to break feature vectors into')
 
@@ -676,6 +677,12 @@ def main():
     
     parser.add_argument('-e', '--edges', metavar='edges', default=True, type=bool,
                    help='Process edges')
+
+    parser.add_argument('-b', '--bottlenecks', metavar='bottlenecks', default=False, type=bool,
+                   help='Search for and process bottleneck subgraphs')
+
+    parser.add_argument('-d', '--depth', metavar='depth', default=2, type=int,
+                   help='Change bottleneck subgraph depth')
 
     logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG)
 
