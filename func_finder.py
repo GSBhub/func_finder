@@ -61,26 +61,24 @@ class block:
     ######## Note: Jump and Fail pointers are set by the CFG class constructor
 
     _parents = None
-    _fail = None
-    _jump = None
+    _fail    = None
+    _jump    = None
 
     def __init__(self, _base_addr, seq_json):
         self._base_addr = hex(_base_addr)
         self._instruction_block = OrderedDict()
         self._parents = list()
-        for _ in seq_json:
-            self._instruction_block[_[u'offset']] = instruction(
-                _[u'offset'], _[u'opcode'])
+        for entry in seq_json:
+            self._instruction_block[entry[u'offset']] = instruction(
+                entry[u'offset'], entry[u'opcode'])
 
     # simple helper function to return the nth item in the instruction dict
     # normally this dict is sorted by the address of the instruction, this
     # helper allows you to circumvent that
     def _get_instruction(self, index):
         iter = cycle(self._instruction_block.items())
-
         for _ in range (-1, index):
            ret = next(iter) 
-
         if ret is None:
             raise IndexError(index, "Index {} out of bounds.".format(index))
         
@@ -288,7 +286,7 @@ class CFG:
                         blk[u'offset'],
                         blk[u'ops']), blk]
                 # match up all the block objects to their corresponding _jump, _fail addresses
-                for key, pair in dict_block.items():
+                for _, pair in dict_block.items():
                     block_obj = pair[0]
                     block_json = pair[1]
                     if u'fail' in block_json:
@@ -417,7 +415,6 @@ def _get_children(child_str):
 
 # helper function for recursive parse func
 # popluates CFG data structure for each function, given a valid func_json
-# TODO: find a more elegant way to handle errors when processing JSON, as can sometimes fail randomly
 def _populate_cfg(addr, func_json):
     # nice solution found at https://grimhacker.com/2016/04/24/loading-dirty-json-with-python/
     # helps handle "dirty" JSON input
