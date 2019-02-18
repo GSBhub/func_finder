@@ -77,6 +77,9 @@ class block:
     # helper allows you to circumvent that
     def _get_instruction(self, index):
         iter = cycle(self._instruction_block.items())
+        ret = None
+        if index >= len(self._instruction_block):
+            raise IndexError(index, "Index {} out of bounds.".format(index))
         for _ in range (-1, index):
            ret = next(iter) 
         if ret is None:
@@ -101,59 +104,61 @@ class block:
     # Default program gram length: 2
     # If the grams provided exceed the length for a list, only items matching that length will
     # be added to the index. 
-    def _n_gram(self, n_grams, filter, filter_list, get_consts):
+    def _n_gram(self, args, filter_list, get_consts):
+
+        op_filter = args.ignore
+        n_grams = args.ngrams
+        min_len = args.min_grams
+        grams = list()
         ret = list()
         opcodes = []
-        start = 0
+
         # generate a filtered list of opcodes given the provided filter
         for key in self._instruction_block.keys():
-            if (filter and self._instruction_block[key]._opcode in filter_list):
+            if (op_filter and self._instruction_block[key]._opcode in filter_list):
                 continue
             else:
                 opcodes.append(self._instruction_block[key]._opcode)
-                if get_consts:
-                    for param in self._instruction_block[key]._params:
-                        if "#" in param:
-                            opcodes.append(param)
+                # if get_consts:
+                #     for param in self._instruction_block[key]._params:
+                #         if "#" in param:
+                #             opcodes.append(param)
 
         # split that list into N-gram opcodes                       
-        for _ in opcodes:
-            gram = ur""
-            for i in range(start, n_grams + start):
-                if start + n_grams < len(opcodes):
-                    gram = ur"{}{}".format(gram, 
-                                        opcodes[i])
-                else: 
-                    break
-            start += 1
-            # append gram to list if it's not an empty value
-            if gram is not ur"":
-                ret.append(gram)
+        if n_grams < len(opcodes):
+            grams = zip(*[opcodes[i:] for i in range(n_grams)])
+        elif min_len <= len(opcodes):
+            grams = ["".join(opcodes)] # just sub the whole list
+
+        if grams is not None:
+            for pair in grams:
+                ret.append("".join(pair))
 
         return ret
 
     # Returns a list of the edges of this block, tokenized into two-gram sections
     # first items are the edges for the parent caller blocks and the first instruction
     # last items are the final instructions of this block and its callees
-    # Filter ignores the BRA instructions, returning the previous instruction instead
+    # Filter ignores the BRA instructions if specified, returning the previous instruction instead
     def _edge_list(self, filter, filter_list):
         ret = list()
         current = self._instruction_block.get(int(self._base_addr, 16))
-
+        parent_next_op = None
         for parent in self._parents:
-            parent_last_instruction = parent._get_instruction(len(parent._instruction_block))._opcode
-            if (filter and parent_last_instruction in filter_list):
-                _ = 0
-                parent_last_instruction = None
-                while parent_last_instruction is None:
+            parent_last_op = parent._get_instruction(len(parent._instruction_block) - 1)._opcode
+            if (filter and parent_last_op in filter_list):
+                i = 1
+                parent_next_op = None
+                while parent_next_op is None and i < len(parent._instruction_block):
                     # attempt to find a valid instruction that is not in the filter list
-                    if parent._get_instruction(len(parent._instruction_block) - _) not in filter_list:
-                        parent_last_instruction = parent._get_instruction(len(parent._instruction_block) - _)._opcode
-                    _ += 1
-                    if _ > len(parent._instruction_block):
-                        break
-            if parent_last_instruction is not None:
-                ret.append(ur"{}{}".format(parent_last_instruction, 
+                    if  parent._get_instruction(len(parent._instruction_block) - i)._opcode not in filter_list:
+                        parent_next_op = parent._get_instruction(len(parent._instruction_block) - i)._opcode
+
+                    i += 1
+
+
+            if parent_next_op is not None and current is not None: # don't add new item if none found
+                ret.append(ur"{}{}".format(parent_last_op, 
                     current._opcode
                 ))
 
@@ -162,30 +167,30 @@ class block:
 
             next_instr = self._jump._instruction_block[int(self._jump._base_addr, 16)]._opcode
             if (filter and next_instr in filter_list):
-                _ = 0
+                i = 0
                 next_instr = None
-                while next_instr is None and _ <= len(self._jump._instruction_block):
+                while next_instr is None and i < len(self._jump._instruction_block):
                     # attempt to find a valid instruction that is not in the filter list
-                    if self._jump._get_instruction(_)._opcode not in filter_list:
-                        next_instr = self._jump._get_instruction(_)._opcode
-                    _ += 1
-                    # if _ > len(self._jump._instruction_block):
-                    #     break
+                    if self._jump._get_instruction(i)._opcode not in filter_list:
+                        next_instr = self._jump._get_instruction(i)._opcode
+                    i += 1
+                    if i > len(self._jump._instruction_block):
+                        break
             if next_instr is not None:
                 ret.append(ur"{}{}".format(current._opcode, next_instr))
             
         if self._fail is not None:
             next_instr = self._fail._instruction_block[int(self._fail._base_addr, 16)]._opcode
             if (filter and next_instr in filter_list):
-                _ = 0
+                i = 0
                 next_instr = None
-                while next_instr is None and _ <= len(self._fail._instruction_block):
+                while next_instr is None and i < len(self._fail._instruction_block):
                     # attempt to find a valid instruction that is not in the filter list
-                    if self._fail._get_instruction(_)._opcode not in filter_list:
-                        next_instr = self._fail._get_instruction(_)._opcode
-                    _ += 1
-                    # if _ > len(self._fail._instruction_block):
-                    #     break
+                    if self._fail._get_instruction(i)._opcode not in filter_list:
+                        next_instr = self._fail._get_instruction(i)._opcode
+                    i += 1
+                    if i > len(self._fail._instruction_block):
+                        break
             if next_instr is not None:
                 ret.append(ur"{}{}".format(current._opcode, next_instr))
             
@@ -196,7 +201,7 @@ class block:
     # Full list of args can be located down by the main method
     def _get_features(self, args):
         ret = []
-        ret.extend(self._n_gram(args.ngrams, args.ignore, ["BRA"], True)) # placeholder values for now
+        ret.extend(self._n_gram(args, ["BRA"], True)) # placeholder values for now
 
         if args.edges:
             ret.extend(self._edge_list(args.ignore, ["BRA"]))
@@ -247,9 +252,12 @@ class CFG:
 
                 # create a dictionary of all blocks using this information
                 for blk in blocks:
-                    dict_block[blk[u'offset']] = [block(
-                        blk[u'offset'],
-                        blk[u'ops']), blk]
+                    if len(blk['ops']) == 0:
+                        continue
+                    else:
+                        dict_block[blk[u'offset']] = [block(
+                            blk[u'offset'],
+                            blk[u'ops']), blk]
                 # match up all the block objects to their corresponding _jump, _fail addresses
                 for _, pair in dict_block.items():
                     block_obj = pair[0]
@@ -270,7 +278,7 @@ class CFG:
                             # KeyErrors result if no valid jumps exist, can be safely ignored
                             continue
                 # save first block, keeping entire tree in mem
-                self._first = dict_block[blocks[000][u'offset']][0] 
+                self._first = dict_block[int(self._base_addr, 16)][0] 
 
     def __str__(self):
         ret = ""
@@ -286,55 +294,75 @@ class CFG:
     # Bottleneck feature searching
     # attempts to find "bottlenecks" - single conditional jumps with multiple parents
     # default depth - 2
-    def _bottlenecks(self, args, depth=2):
+    def _bottlenecks(self, args, visited, depth=2):
         # Very WIP
         # TODO: find bottlenecks, analyze subgraphs, create feature vector out of that
         # TODO: add in an optional depth detection
         
         ret = list() # feature list, containing grams back
-
+        
         # first - identify all bottlenecks within a function, store in list
-        bottlenecks = self._get_bottlenecks(self._first)
-
+        bottlenecks = self._get_bottlenecks(self._first, visited)
         # then  - get features from bottlenecks of depth N back
         for bottleneck in bottlenecks:
-            ret.extend(self._bottleneck_seek_back(bottleneck, depth, args))
-
+            ret.extend(self._bottleneck_seek_back(bottleneck, depth, args, visited))
+     #   print "wew"
         return ret
 
     # recursively traverses function CFG and gathers a list of all bottlenecks
-    def _get_bottlenecks(self, current):
+    def _get_bottlenecks(self, current, visited):
 
         ret = list()
-        if (len(current._parents) >= 4):  # if block has 4 or more _parents, define as a bottleneck
+        if current is None or current in visited:  
+            # Ignore blocks we've already resited, base condition
+            return ret  # if block has 4 or more _parents, define as a bottleneck
+
+        if (len(current._parents) >= 4):
             ret.append(current)
 
+        visited.append(current)
+
         if current._fail is not None:
-            ret.extend(self._get_bottlenecks(current._fail))
+            ret.extend(self._get_bottlenecks(current._fail, visited))
 
         if current._jump is not None:
-            ret.extend(self._get_bottlenecks(current._jump))
+            ret.extend(self._get_bottlenecks(current._jump, visited))
 
         return ret
 
     # recursively seeks back N blocks from bottleneck
     # returns a list of all N-gram features including this block and any prior
-    def _bottleneck_seek_back(self, bottleneck, depth, args):
+    def _bottleneck_seek_back(self, bottleneck, depth, args, visited):
 
         ret = list()
         current = bottleneck
 
-        if depth == 0: # base condition
-            return
+        if depth == 0 or bottleneck is None:  # base condition
+            return ret
+
+        # visited.append(bottleneck)
+        # current = bottleneck
 
         # add block's current features to ret
-        ret.extend(current._get_features(args.ngrams, args.ignore, ["BRA"], True))
+        ret.extend(current._get_features(args))
 
         # add in edge instruction for each parent
-        for parent in current._parents: 
-            ret.append(ur"{}{}".format(current._get_instruction(0)._opcode, 
-                parent._get_instruction(len(parent._instruction_block))))
-            ret.extend(self._bottleneck_seek_back(parent, depth - 1, args))
+        for parent in current._parents:
+
+            parent_op = parent._get_instruction(len(parent._instruction_block) - 1)._opcode
+            if "BRA" in parent_op:
+
+                try:
+                    parent_op = parent._get_instruction(len(parent._instruction_block) - 2)._opcode
+                    self_op = current._get_instruction(0)._opcode
+                    ret.append(ur"{}{}".format(self_op, 
+                    parent_op))
+                except IndexError:
+                    continue # ignore index errors, just don't add the instruction pair as the block was a single BRA instruction
+
+            subgraph = self._bottleneck_seek_back(parent, depth - 1, args, visited)
+            if subgraph:
+                ret.extend(subgraph)
 
         return ret
 
@@ -350,7 +378,7 @@ class function:
     _base_addr = 0x0  # address of the function
     _json = ""      # json representation of function pointed to
     _dot = ""       # dot representation of function pointed to
-
+    
     def __init__(self, _base_addr, cfg):
         self._base_addr = hex(_base_addr)
         self._children = {}
@@ -370,11 +398,15 @@ class function:
     # Master-function to grab features from block sub-classes
     # Returns a complete list of features for this entire function
     def _get_features(self, args):
-        __visited = []
+        ret = []
+        if self._cfg._first is None:
+            return
+
+        ret += self._get_features_helper(self._cfg._first, [], args)
+
         if args.bottlenecks:
-            ret = self._cfg._bottlenecks(args, args.depth)
-        else:
-            ret = self._get_features_helper(self._cfg._first, __visited, args)
+            ret += self._cfg._bottlenecks(args, [], args.depth)
+
         return ret
 
     # recursive helper for _get_features
@@ -461,15 +493,23 @@ def _populate_cfg(addr, func_json):
 #  found children addresses are added to a "_visited" global data structure, and are not recursed if _visited multiple times
 #       instead, _visited children just have their list of _parents updated whenever something else finds them
 def _recursive_parse_func(addr, visited, r2):
+    
+    #r2.cmd('af-')
 
     r2.cmd("0x{:04x}".format(addr))     # seek to address
     logging.debug("R2 Command used: '0x{:04x}'".format(addr))
 
-    r2.cmd("aa")                        # analyze all
-    logging.debug("R2 Command used: aa")
-
-    r2.cmd("sf.")                       # seek to beginning of func
     addr = int(r2.cmd("s"), 16)
+    r2.cmd("af-")
+    r2.cmd("aa")                        # analyze all
+    r2.cmd("af")
+    r2.cmd("afr")
+    r2.cmd("ax")
+    r2.cmd("afb")
+    r2.cmd("aab")    
+    r2.cmd("sf.")                       # seek to beginning of func
+
+    #logging.debug("R2 Command used: aa")
 
     child_str = r2.cmd("pdf")          # grab list of func params
     logging.debug("R2 Command used: 'pdf'")
@@ -487,6 +527,7 @@ def _recursive_parse_func(addr, visited, r2):
         func = function(addr, cfg)
         visited[addr] = func
 
+
     for child_addr in children:
         if child_addr in visited.keys():  # we don't need to recursively parse a function's children if it's already parsed
             visited[child_addr]._parents[addr] = func  # store reference to parent in child object
@@ -496,6 +537,37 @@ def _recursive_parse_func(addr, visited, r2):
             visited[child_addr]._parents[addr] = func # store the child in the base func object
             func._push_child(visited[child_addr])
     return func
+
+def _parse_call_str(func_str):
+    ret = []
+    fs = func_str.splitlines()
+    children = set()
+    
+    for ln in fs:
+        p = ur".*JSR.*[^$](0x[0-9a-fA-F]{4})"  
+        children.update(re.findall(p, ln))
+        p1 = ur".*JSR.*fcn.0000([0-9a-fA-F]{4})"
+        ch2 = re.findall(p1, ln)
+        children.update(ch2)  
+
+    for child in children:
+        
+        try:
+            ret.append(int(child, 16))
+        except TypeError:
+            print (child)
+
+    del children
+
+    # for line in fs:
+    #     try:
+    #         addr = int(line[:10], 16) # first 10 spots in line are the hex address
+    #     except TypeError:
+    #         continue
+    #     if addr and addr >= 36864: # sanity check to make sure we're not including addresses from MMIO/RAM
+    #         ret.append(addr)
+    return ret
+
 
 # simple helper function to split a function string into a list and return any found addresses in that list
 def _func_parse_str(func_str):
@@ -518,10 +590,16 @@ def _func_parse_str(func_str):
 def _linear_parse_func(func, visited, r2):
     func_list = []
     r2.cmd("aaa")
-    func_str = r2.cmd('afl')  # pull a complete list of functions
-    logging.debug("R2 Command used: 'afl'")
-    r2.cmd("af-")
-    l = _func_parse_str(func_str)
+    r2.cmd("aaf")
+    r2.cmd("aab")
+    r2.cmd("aar")
+    r2.cmd("aac")
+    # func_str = r2.cmd('afl')  # pull a complete list of functions
+    # logging.debug("R2 Command used: 'afl'")
+    func_str = r2.cmd("/A call")
+    l = _parse_call_str(func_str)
+    #r2.cmd("af-") # purge function data - AAA doesn't seem to work properly, but it does help us ID functions
+    # l = _func_parse_str(func_str)
     for addr in l:
         if addr not in visited.keys():
             # attempt to manually parse each address with recursion
@@ -568,7 +646,7 @@ def _get_start(infile):
         addr = int(r2.cmd("s"), 16)
         r2.quit()
     except IOError:
-        print "Could not locate start of binary"
+        print ("Could not locate start of binary")
     return addr
 
 # this method is responsible for
@@ -583,9 +661,9 @@ def _parse_rom(infile, args):
     
     try:
         # load infile into R2 - error if not found
-        r2 = r2pipe.open(infile, ["-2"])
+        r2 = r2pipe.open(infile, ["-2"]) # note - -2 flag surpresses R2 warning/logging information
     except IOError:
-        print "R2 Couldn't open file {}\n".format(infile)
+        print ("R2 Couldn't open file {}\n").format(infile)
     if r2:                             # assert the R2 file opened correctly
         r2.cmd('e asm.arch=m7700')     # set the architecture env variable
         logging.debug("R2 Command used: 'e asm.arch=m7700'")
@@ -600,38 +678,44 @@ def _parse_rom(infile, args):
         if (rst < start):  # some RST vectors are located below the test fcn
             start = rst
 
+        r2.cmd("S 0x0000 0x0000 {:04x} data rw".format(start - 0x1))
+        r2.cmd("S {:04x} {:04x} {:04x} ROM rwx".format(start, start, 0xffd0-start)) # define code sector
+
         r2.cmd("e anal.limits=true")
         r2.cmd("e anal.from=0x{:04x}".format(start))
         # ffd0 onward are just vectors and should be reserved, not functions
         r2.cmd("e anal.to=0xffd0")
-        logging.debug("e anal.hasnext: {}".format(r2.cmd("e anal.hasnext")))
+        #logging.debug("e anal.hasnext: {}".format(r2.cmd("e anal.hasnext")))
         logging.debug("e anal.from: {}".format(r2.cmd("e anal.from")))
         logging.debug("e anal.to: {}".format(r2.cmd("e anal.to")))
+
+        r2.cmd("0x{:04x}".format(rst))
+        r2.cmd("aaa")
 
         # build func from a recursive function parse
         func_list = []
         func = None
-        try:
-            # visited struct is passed by reference, and should be populated in both cases
-            func = _recursive_parse_func(rst, visited, r2)
-            func_list.append(func)
+        # try:
+        #     # visited struct is passed by reference, and should be populated in both cases
+        #     func = _recursive_parse_func(rst, visited, r2)
+        #     func_list.append(func)
 
-        except ValueError as valerr:
-            print valerr
-            print ("Recursive disassembly parse for ROM failed:")
+        # except ValueError as valerr:
+        #     print (valerr)
+        #     print ("Recursive disassembly parse for ROM failed:")
 
         # then attempt to find additional functoins that were missed in the initial sweep with a recursive search
         try:
             func_list.extend(_linear_parse_func(func, visited, r2))
         except ValueError as valerr:
-            print valerr
+            print (valerr)
             print("Linear disassembly parse for ROM failed.")
+
         feature_dictionary = {}
 
         for funcs in func_list:
             # pass the functions, an empty list (visited), and our option flags to the feature parser
             feature_dictionary.update(_grab_features(funcs, [], args))
-
         # functions.append(func_list)
         
     else:
@@ -653,9 +737,11 @@ def _isHex(num):
 # Filename can be multiple options, each subsequent filename loads in an additional ROM
 # additional options:
 #   -o: outfile  - specify the name for the output JSON file
-#   -s: subgraph - attempt to analyze subgraphs of functions for match, instead of entire functions
 #   -n: grams    - specify the number of grams to break the software for an ECU into
 #   -i: ignore   - ignore certain instructions
+#   -e: edges    - add in edge processing to graph
+#   -b: bot.necks- attempt bottleneck subgraph processing instead of full graph processing
+#   -d: depth    - set the depth variable of the bottleneck to specify how far back to go
 def main():
     # set up the parser first
     # default parser args - filename, opens file for JSON parsing
@@ -672,16 +758,19 @@ def main():
     parser.add_argument('-n', '--ngrams', metavar='ngrams', default=2, type=int,
                    help='Specify number of grams to break feature vectors into')
 
-    parser.add_argument('-i', '--ignore', metavar='ignore', default=True, type=bool,
+    parser.add_argument('-i', '--ignore', metavar='ignore', default=False, type=bool,
                    help='Ignore BRA instructions')
     
-    parser.add_argument('-e', '--edges', metavar='edges', default=True, type=bool,
+    parser.add_argument('-m', '--min-grams', metavar='min_grams', type=int, default=1,
+                        help='Specify minimum length of grams to include in output')
+
+    parser.add_argument('-e', '--edges', metavar='edges', default=False, type=bool,
                    help='Process edges')
 
     parser.add_argument('-b', '--bottlenecks', metavar='bottlenecks', default=False, type=bool,
                    help='Search for and process bottleneck subgraphs')
 
-    parser.add_argument('-d', '--depth', metavar='depth', default=2, type=int,
+    parser.add_argument('-d', '--depth', metavar='depth', default=1, type=int,
                    help='Change bottleneck subgraph depth')
 
     logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG)
@@ -702,6 +791,7 @@ def main():
 
     out.close()
 
+print("Starting...")
 # start
 if __name__ == '__main__':
     main()
