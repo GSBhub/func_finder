@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<data>
+    <control name="722527-1993-USDM-SVX-EG33.bin">
+        <engine>EG33</engine>
+        <year>1993</year>
+        <ROM_ID>722527</ROM_ID>
+        <RST_VECTOR 	  addr="0x93c1"/>
+        <ROM_Start 		  addr="0x9000"/>
+        <JSR_Loop 		  addr="0x96e0"/> <!--, n_instrs=20-->
+		<Maintenance_Func addr="0x9725"/>
+    </control>
+    
+    <control name="753C21-1995-USDM-Impreza-EJ18">
+        <engine>EJ18</engine>
+        <year>1995</year>
+        <ROM_ID>725C21</ROM_ID>
+        <RST_VECTOR addr="0x9414"/>
+        <ROM_Start addr="0x9000"/>
+    </control>
+    
+    <control name="744042-1994-UKDM-Wrx-EJ20">
+        <engine>EJ20</engine>
+        <year>1994</year>
+        <ROM_ID>744042</ROM_ID>
+        <RST_VECTOR addr="0x9414"/>
+        <ROM_Start addr="0x9000"/>
+    </control>
+    
+    <control name="733257-1993-Canada-Legacy-EJ22">
+        <engine>EJ22</engine>
+        <year>1993</year>
+        <ROM_ID>733257</ROM_ID>
+     <!--       <RST_VECTOR addr="0x8f08", alt_addr="0x970e"/> -->
+        <ROM_Start addr="0x8f08"/>
+    </control> 
+ <!--   
+	NOTE : THE FOLLOWING FEATURES NEED WORK, AS THERE'S A LOT OF OVERLAP BETWEEN EJ18, 20, AND 22 FEATURES
+	
+
+ -->
+</data>

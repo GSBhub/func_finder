@@ -22,6 +22,8 @@ import pygraphviz
 import md5
 import pprint
 import collections
+import xlsxwriter
+import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from networkx.drawing import nx_agraph
 from subprocess import check_call
@@ -50,7 +52,7 @@ class instruction:
             ret = "OP: {}\n".format(self._opcode)
         return ret
 
-class block:
+class block ():
     # a set of instructions that are isolated from other sub-instructions behind a _jump condition or a branch
     # field contains: base addr (where in memory these instructions begin)
     #               : _instruction_block - list of all instruction objects stored within a block
@@ -71,6 +73,13 @@ class block:
         for entry in seq_json:
             self._instruction_block[entry[u'offset']] = instruction(
                 entry[u'offset'], entry[u'opcode'])
+
+    # implementation "sort of" equals method, threshold is minimum jaccard for equal
+    def _compare(self, compare, threshold=.75):
+        a = self._instruction_block.items()  
+        b = compare._instruction_block.items()
+        jaccard = len(list(set(a) & set(b))) / len(list(set(a) | set(b)))
+        return True if jaccard > threshold else False        
 
     # simple helper function to return the nth item in the instruction dict
     # normally this dict is sorted by the address of the instruction, this
@@ -104,9 +113,9 @@ class block:
     # Default program gram length: 2
     # If the grams provided exceed the length for a list, only items matching that length will
     # be added to the index. 
-    def _n_gram(self, args, filter_list, get_consts):
-
-        op_filter = args.ignore
+    def _n_gram(self, args):
+        filter_list = args.ignore
+        #get_consts = True
         n_grams = args.ngrams
         min_len = args.min_grams
         grams = list()
@@ -115,8 +124,8 @@ class block:
 
         # generate a filtered list of opcodes given the provided filter
         for key in self._instruction_block.keys():
-            if (op_filter and self._instruction_block[key]._opcode in filter_list):
-                continue
+            if (filter_list is not None and self._instruction_block[key]._opcode in filter_list):
+                continue # skip opcodes in the filter
             else:
                 opcodes.append(self._instruction_block[key]._opcode)
                 # if get_consts:
@@ -124,9 +133,10 @@ class block:
                 #         if "#" in param:
                 #             opcodes.append(param)
 
-        # split that list into N-gram opcodes                       
+        # split list into N-gram opcodes if number of grams in list is sufficient         
         if n_grams < len(opcodes):
             grams = zip(*[opcodes[i:] for i in range(n_grams)])
+        # otherwise, check to see if list passes the minimum length requirement
         elif min_len <= len(opcodes):
             grams = ["".join(opcodes)] # just sub the whole list
 
@@ -140,59 +150,66 @@ class block:
     # first items are the edges for the parent caller blocks and the first instruction
     # last items are the final instructions of this block and its callees
     # Filter ignores the BRA instructions if specified, returning the previous instruction instead
-    def _edge_list(self, filter, filter_list):
+    def _edge_list(self, args):
+
+        filter_list = args.ignore
+    
         ret = list()
-        current = self._instruction_block.get(int(self._base_addr, 16))
-        parent_next_op = None
-        for parent in self._parents:
-            parent_last_op = parent._get_instruction(len(parent._instruction_block) - 1)._opcode
-            if (filter and parent_last_op in filter_list):
-                i = 1
-                parent_next_op = None
-                while parent_next_op is None and i < len(parent._instruction_block):
-                    # attempt to find a valid instruction that is not in the filter list
-                    if  parent._get_instruction(len(parent._instruction_block) - i)._opcode not in filter_list:
-                        parent_next_op = parent._get_instruction(len(parent._instruction_block) - i)._opcode
+        current_ops = self._instruction_block
+        last_op = None
+        for instr in reversed(current_ops.values()):
+            
+            if instr._opcode not in filter_list:
+                last_op = instr # find last non-filtered instruction, seeking back
+                break
 
-                    i += 1
+        #parent_next_op = None
+
+        # redundant with child search
+        # for parent in self._parents:
+        #     # pull opcode of parent
+        #     parent_last_op = parent._get_instruction(len(parent._instruction_block) - 1)._opcode
+        #     if (filter_list is not None and parent_last_op in filter_list):
+        #         i = 1
+        #         parent_next_op = None
+        #         while parent_next_op is None and i < len(parent._instruction_block):
+        #             # attempt to find a valid instruction that is not in the filter list
+        #             if  parent._get_instruction(len(parent._instruction_block) - i)._opcode not in filter_list:
+        #                 parent_next_op = parent._get_instruction(len(parent._instruction_block) - i)._opcode
+        #             i += 1
 
 
-            if parent_next_op is not None and current is not None: # don't add new item if none found
-                ret.append(ur"{}{}".format(parent_last_op, 
-                    current._opcode
-                ))
+            # if parent_next_op is not None and current is not None: # don't add new item if none found
+            #     ret.append(ur"{}{}".format(parent_last_op, 
+            #         current._opcode
+            #     ))
 
         # add in child edges
         if self._jump is not None:
+            # point to next block
+            next_block = self._jump
+            instructions = next_block._instruction_block
+            child_last_op = None
+            for instr in reversed(instructions.values()):
+                if instr._opcode not in filter_list:
+                    child_last_op = instr # find last non-filtered instruction, seeking back
+                    break
 
-            next_instr = self._jump._instruction_block[int(self._jump._base_addr, 16)]._opcode
-            if (filter and next_instr in filter_list):
-                i = 0
-                next_instr = None
-                while next_instr is None and i < len(self._jump._instruction_block):
-                    # attempt to find a valid instruction that is not in the filter list
-                    if self._jump._get_instruction(i)._opcode not in filter_list:
-                        next_instr = self._jump._get_instruction(i)._opcode
-                    i += 1
-                    if i > len(self._jump._instruction_block):
-                        break
-            if next_instr is not None:
-                ret.append(ur"{}{}".format(current._opcode, next_instr))
+            if last_op is not None and child_last_op is not None:
+                ret.append(ur"{}{}".format(last_op._opcode, child_last_op._opcode))
             
         if self._fail is not None:
-            next_instr = self._fail._instruction_block[int(self._fail._base_addr, 16)]._opcode
-            if (filter and next_instr in filter_list):
-                i = 0
-                next_instr = None
-                while next_instr is None and i < len(self._fail._instruction_block):
-                    # attempt to find a valid instruction that is not in the filter list
-                    if self._fail._get_instruction(i)._opcode not in filter_list:
-                        next_instr = self._fail._get_instruction(i)._opcode
-                    i += 1
-                    if i > len(self._fail._instruction_block):
-                        break
-            if next_instr is not None:
-                ret.append(ur"{}{}".format(current._opcode, next_instr))
+
+            next_block = self._fail
+            instructions = next_block._instruction_block
+            child_last_op = None
+            for instr in reversed(instructions.values()):
+                if instr._opcode not in filter_list:
+                    child_last_op = instr # find last non-filtered instruction, seeking back
+                    break
+
+            if last_op is not None and child_last_op is not None:
+                ret.append(ur"{}{}".format(last_op._opcode, child_last_op._opcode))
             
         return ret
 
@@ -201,14 +218,10 @@ class block:
     # Full list of args can be located down by the main method
     def _get_features(self, args):
         ret = []
-        ret.extend(self._n_gram(args, ["BRA"], True)) # placeholder values for now
+        ret.extend(self._n_gram(args)) # placeholder values for now
 
         if args.edges:
-            ret.extend(self._edge_list(args.ignore, ["BRA"]))
-
-        # TODO: add additional command line args to parse
-        # - bottleneck/subgraph detection and parsing
-        # - additional features
+            ret.extend(self._edge_list(args))
 
         return ret
 
@@ -230,23 +243,24 @@ class CFG:
     #               : first - pointer to the first block in memory
     #               : json - json representation of the CFG
     # constructor is responsible for populating the block data-types given a JSON representation from R2
-
+    _netx_cfg = None
     _first = None
 
     def __init__(self, json):
-        
+        self._netx_cfg = nx.DiGraph()
         if json:
             self._json = json[0]
         else:
             self._json = ""
         if u'offset' in self._json: 
+
             # JSON objects from R2 use offset as their base address, seek here and begin parsing
             self._base_addr = hex(self._json[u'offset'])
             if u'blocks' in self._json:
                 # Populate block objects using the 'blocks' field in R2's JSON
                 blocks = self._json[u'blocks']
                 dict_block = {}
-
+                
                 # pass addr of first block, ops of first block, and pointers of first block
                 #self._first = block(blocks[000][u'offset'], blocks[000][u'ops'])
 
@@ -258,14 +272,35 @@ class CFG:
                         dict_block[blk[u'offset']] = [block(
                             blk[u'offset'],
                             blk[u'ops']), blk]
+                i = 0
+                for _, pair in dict_block.items():
+                    # init nodes
+                    self._netx_cfg.add_node(pair[0], 
+                        base_addr=pair[0]._base_addr, 
+                        instruction_block = pair[0]._instruction_block,
+                        parents = pair[0]._parents,
+                        jump = pair[0]._jump,
+                        fail = pair[0]._fail,
+                        node_num = i
+                    )
+                    pair[0].node_num = i
+                    i+=1
+
                 # match up all the block objects to their corresponding _jump, _fail addresses
                 for _, pair in dict_block.items():
                     block_obj = pair[0]
                     block_json = pair[1]
+                    #_netx_cfg[_][block] = block_obj
+
                     if u'fail' in block_json:
                         try:
                             block_obj._fail = dict_block[block_json[u'fail']][0]
                             block_obj._fail._parents.append(block_obj)
+                            #_netx_cfg.add_node(block_obj._fail)
+                            self._netx_cfg.add_edge(block_obj, block_obj._fail)
+                            self._netx_cfg[block_obj][block_obj._fail]["color"] = "red"
+                           
+
                         except KeyError:
                             # KeyErrors result if no valid jumps exist, can be safely ignored
                             continue
@@ -274,6 +309,13 @@ class CFG:
                         try:
                             block_obj._jump = dict_block[block_json[u'jump']][0]
                             block_obj._jump._parents.append(block_obj)
+                            #_netx_cfg.add_node(block_obj._jump)
+                            self._netx_cfg.add_edge(block_obj, block_obj._jump)
+                            if block_obj._fail is not None:
+                                self._netx_cfg[block_obj][block_obj._jump]["color"] = "green"
+                            else: 
+                                self._netx_cfg[block_obj][block_obj._jump]["color"] = "blue"
+
                         except KeyError:
                             # KeyErrors result if no valid jumps exist, can be safely ignored
                             continue
@@ -299,14 +341,24 @@ class CFG:
         # TODO: find bottlenecks, analyze subgraphs, create feature vector out of that
         # TODO: add in an optional depth detection
         
-        ret = list() # feature list, containing grams back
+        ret = dict() # feature list, containing grams back
         
+
         # first - identify all bottlenecks within a function, store in list
         bottlenecks = self._get_bottlenecks(self._first, visited)
         # then  - get features from bottlenecks of depth N back
         for bottleneck in bottlenecks:
-            ret.extend(self._bottleneck_seek_back(bottleneck, depth, args, visited))
-     #   print "wew"
+            bn = self._netx_cfg.subgraph(self._netx_cfg.neighbors(bottleneck))
+
+            ret[bottleneck._base_addr] = (
+                self._bottleneck_seek_back(
+                    bottleneck, depth, args, visited)
+                )
+            # nx.draw(bn)
+            # plt.show()
+            # nx.draw(self._netx_cfg)
+            # plt.show()
+
         return ret
 
     # recursively traverses function CFG and gathers a list of all bottlenecks
@@ -337,28 +389,20 @@ class CFG:
         ret = list()
         current = bottleneck
 
-        if depth == 0 or bottleneck is None:  # base condition
+        ret.extend(current._get_features(args))
+
+        if depth == 0 or bottleneck is None:  # base condition - JUST return bottleneck
             return ret
 
         # visited.append(bottleneck)
         # current = bottleneck
 
         # add block's current features to ret
-        ret.extend(current._get_features(args))
 
         # add in edge instruction for each parent
         for parent in current._parents:
 
-            parent_op = parent._get_instruction(len(parent._instruction_block) - 1)._opcode
-            if "BRA" in parent_op:
-
-                try:
-                    parent_op = parent._get_instruction(len(parent._instruction_block) - 2)._opcode
-                    self_op = current._get_instruction(0)._opcode
-                    ret.append(ur"{}{}".format(self_op, 
-                    parent_op))
-                except IndexError:
-                    continue # ignore index errors, just don't add the instruction pair as the block was a single BRA instruction
+            # parent_op = parent._get_instruction(len(parent._instruction_block) - 1)._opcode
 
             subgraph = self._bottleneck_seek_back(parent, depth - 1, args, visited)
             if subgraph:
@@ -405,8 +449,7 @@ class function:
         ret += self._get_features_helper(self._cfg._first, [], args)
 
         if args.bottlenecks:
-            ret += self._cfg._bottlenecks(args, [], args.depth)
-
+            ret = self._cfg._bottlenecks(args, [], args.depth)
         return ret
 
     # recursive helper for _get_features
@@ -426,11 +469,67 @@ class function:
             ret.extend(self._get_features_helper(block._fail, __visited, args))
         return ret
 
+# Container class, contains information on the ROM including
+#   - RST Vector Address
+#   - Instruction Loop Length
+#   - Other vectors
+#  These features will be used to identify which engine each binary belongs to
+class ROM():
+
+    def __init__(self, filename, functions, RST, START):
+        self.filename = filename
+        # self.jsons = jsons
+        # self.r2 = r2 - jsons, r2,  removed args
+        self.functions = functions
+        self.RST = RST # RST vector address
+        self.START = START # length of main internal loop
+        self.max_jsons = {} # max JSON values from JSONParser 
+        self.engine = "???"
+
+    # returns similarity percentage of two ROMs based on internal features of this data structure
+    # 
+    # Metrics: RST Vector address - Code Start address - Max JSON Jaccard Values
+    # 
+    # Returns a value from 0 - 1 
+    def _compare(self, rom_cmp):
+
+        comparison_index = 0.0
+
+
+        return "WIP"
+
+    # specific comparison function similar to above 
+    # designed to match how alike a functin is with the specific control
+    def _control_comparison(self, control):
+
+        comparison_index = 0.0
+        jaccard_comparison = 0.0
+        jacc_vals = 0
+        for label, maxes in self.max_jsons.iteritems():
+            for comparison_label, comp_val in maxes.iteritems():
+                if control.filename in label: # locate the control-self jaccard values
+
+                    #for _, json in comp_val.iteritems():
+                    jaccard_comparison += comp_val[1] # add jaccard value from each json structure
+                    jacc_vals += 1
+
+        jaccard_comparison = jaccard_comparison / jacc_vals
+
+        if control.RST == self.RST:
+            comparison_index += 1
+        if control.START == self.START:
+            comparison_index += 1          
+
+        comparison_index += jaccard_comparison
+
+        return comparison_index / 3
+
 # locates the reset vector address from a valid M7700 binary
 # using a currently open radare2 session
 # used to find initial location for mem searches
 def _get_rst(r2):
     # seek to the address for the reset vector (const for all of our binaries)
+
     r2.cmd("s 0xfffe")
     logging.debug("R2 Command used: 's 0xfffe'")
 
@@ -494,26 +593,17 @@ def _populate_cfg(addr, func_json):
 #       instead, _visited children just have their list of _parents updated whenever something else finds them
 def _recursive_parse_func(addr, visited, r2):
     
-    #r2.cmd('af-')
-
     r2.cmd("0x{:04x}".format(addr))     # seek to address
     logging.debug("R2 Command used: '0x{:04x}'".format(addr))
 
-    addr = int(r2.cmd("s"), 16)
-    r2.cmd("af-")
-    r2.cmd("aa")                        # analyze all
-    r2.cmd("af")
-    r2.cmd("afr")
-    r2.cmd("ax")
-    r2.cmd("afb")
-    r2.cmd("aab")    
-    r2.cmd("sf.")                       # seek to beginning of func
+    #r2.cmd("af-")
+    r2.cmd("aa")
 
-    #logging.debug("R2 Command used: aa")
+    addr = int(r2.cmd("s"), 16)
 
     child_str = r2.cmd("pdf")          # grab list of func params
     logging.debug("R2 Command used: 'pdf'")
-
+    
     children = _get_children(child_str)  # pull list of children from func list
 
     if addr in visited.keys():
@@ -553,7 +643,8 @@ def _parse_call_str(func_str):
     for child in children:
         
         try:
-            ret.append(int(child, 16))
+            if (int(child, 16) > 0x8000):
+                ret.append(int(child, 16))
         except TypeError:
             print (child)
 
@@ -589,22 +680,24 @@ def _func_parse_str(func_str):
 # catches a few extra functions that a normal recurse from the RST vector does not
 def _linear_parse_func(func, visited, r2):
     func_list = []
-    r2.cmd("aaa")
-    r2.cmd("aaf")
-    r2.cmd("aab")
-    r2.cmd("aar")
     r2.cmd("aac")
+    
+    # use /A call instead of afl
     # func_str = r2.cmd('afl')  # pull a complete list of functions
     # logging.debug("R2 Command used: 'afl'")
     func_str = r2.cmd("/A call")
+
+    assert(func_str is not None)
+
     l = _parse_call_str(func_str)
-    #r2.cmd("af-") # purge function data - AAA doesn't seem to work properly, but it does help us ID functions
-    # l = _func_parse_str(func_str)
+
     for addr in l:
         if addr not in visited.keys():
             # attempt to manually parse each address with recursion
             func_list.append(_recursive_parse_func(addr, visited, r2))
+
     return func_list
+
 
 # Creates an array of hashed features representing the instruction grams of each block within a function
 def _grab_features(func, visited, args):
@@ -628,25 +721,27 @@ def _grab_features(func, visited, args):
 def _get_start(infile):
     addr = 0x0000
 
-    try:
-        # load infile into R2 - error if not found
-        r2 = r2pipe.open(infile, ["-2"])
-        r2.cmd("e asm.arch=m7700")
-        addr = 0
-        val = r2.cmd("/c CMP al #0xf0")  # attempt to find the initial address
-        if val is "":
-            # attempt to find the initial address (if the flags aren't set properly yet)
-            val = r2.cmd("/c CMP ax #0xf0f0")
-        vals = val.split()
+  #  try:
+    # load infile into R2 - error if not found
+    r2 = r2pipe.open(infile, ["-2"])
+    r2.cmd("e asm.arch=m7700")
+    addr = 0
+    val = r2.cmd("/c CMP al #0xf0")  # attempt to find the initial address
+    if val is "":
+        # attempt to find the initial address (if the flags aren't set properly yet)
+        val = r2.cmd("/c CMP ax #0xf0f0")
+    vals = val.split()
 
-        try:
-            r2.cmd("s {}".format(vals[0]))
-        except IndexError:
-            None
-        addr = int(r2.cmd("s"), 16)
-        r2.quit()
-    except IOError:
-        print ("Could not locate start of binary")
+    try:
+        r2.cmd("s {}".format(vals[0]))
+    except IndexError:
+        None
+    addr = int(r2.cmd("s"), 16)
+    r2.quit()
+    
+#    except IOError:
+   # print ("Could not locate start of binary")
+
     return addr
 
 # this method is responsible for
@@ -656,6 +751,7 @@ def _get_start(infile):
 def _parse_rom(infile, args):
 
     visited = {}
+    
     print("Loading '{}' into R2...".format(infile))
     start = _get_start(infile)
     
@@ -682,7 +778,9 @@ def _parse_rom(infile, args):
         r2.cmd("S {:04x} {:04x} {:04x} ROM rwx".format(start, start, 0xffd0-start)) # define code sector
 
         r2.cmd("e anal.limits=true")
-        r2.cmd("e anal.from=0x{:04x}".format(start))
+        r2.cmd("e anal.from=0x{:04x}".format(start)) 
+        # start algorithm doesn't work too well, there are a few funcs that have some extra routines before the 0x9000 ROM code
+ 
         # ffd0 onward are just vectors and should be reserved, not functions
         r2.cmd("e anal.to=0xffd0")
         #logging.debug("e anal.hasnext: {}".format(r2.cmd("e anal.hasnext")))
@@ -690,19 +788,19 @@ def _parse_rom(infile, args):
         logging.debug("e anal.to: {}".format(r2.cmd("e anal.to")))
 
         r2.cmd("0x{:04x}".format(rst))
-        r2.cmd("aaa")
+        #r2.cmd("aaa")
 
         # build func from a recursive function parse
         func_list = []
         func = None
-        # try:
-        #     # visited struct is passed by reference, and should be populated in both cases
-        #     func = _recursive_parse_func(rst, visited, r2)
-        #     func_list.append(func)
+        try:
+            # visited struct is passed by reference, and should be populated in both cases
+            func = _recursive_parse_func(rst, visited, r2)
+            func_list.append(func)
 
-        # except ValueError as valerr:
-        #     print (valerr)
-        #     print ("Recursive disassembly parse for ROM failed:")
+        except ValueError as valerr:
+            print (valerr)
+            print ("Recursive disassembly parse for ROM failed:")
 
         # then attempt to find additional functoins that were missed in the initial sweep with a recursive search
         try:
@@ -717,12 +815,17 @@ def _parse_rom(infile, args):
             # pass the functions, an empty list (visited), and our option flags to the feature parser
             feature_dictionary.update(_grab_features(funcs, [], args))
         # functions.append(func_list)
+        split = _json_parser_format(infile)
         
+        # store features in ROM
+        rom = ROM(split, func_list, rst, start)
+
     else:
         print("Error parsing R2")
     r2.quit()
     print("Quitting R2...")
-    return feature_dictionary
+
+    return func_list, feature_dictionary, rom
 
 # helper function to check if a string is a hex string or not
 def _isHex(num):
@@ -731,6 +834,161 @@ def _isHex(num):
         return True
     except ValueError:
         return False
+
+# implementation "sort of" equals method, threshold is minimum jaccard for equal
+# params 2 nodes
+def _compare(node1, node2, threshold=.75):
+
+    a = node1['instruction_block'].items()  
+    b = node2['instruction_block'].items()
+
+    jaccard = len(list(set(a) & set(b))) / len(list(set(a) | set(b)))
+
+    return True if jaccard > threshold else False        
+
+def _pull_ctrl_funcs(ctrl_func):
+    sensors = {
+        'batt_voltage': ['0x9a56', '0x9f5b', '0xa166', '0xa307', '0xae2c', '0xd982', '0xe1cd'],
+        'vehicle_speed': ['0x9be8', '0x9dce', '0xa59d', '0xa9a7', '0xafc6', '0xb960'],
+        'engine_speed': ['0xa59d', '0xa5ec', '0xa9a7', '0xafc6', '0xb5bf', '0xb960'],
+        'water_temp': ['0x9b46', '0xab56'],
+        'ignition_timing': ['0xdb1a', '0xda0f'],
+        'airflow': ['0xddcd'],
+        'throttle_position': ['0xe1cd'],
+        'knock_correction': ['0xafc6']
+    }
+    ret = {}
+    for func in ctrl_func:
+        for sensor, funcs in sensors.iteritems():
+            if func._base_addr in funcs:
+                ret[sensor] = func
+    return ret
+
+# helper method to quickly convert our file names into a more consise format
+# this format is used in JSONParser as the names for the excel spreadsheets
+def _json_parser_format(infile):
+    split = infile.split('/')
+    split = split[len(split) - 1]
+    split = split.split('-')
+    split = split[0][4:] + '-' + split[1][2:] + '-' + split[4].split('.')[0]
+    return split
+
+# Quick method to translate the sensor type from each string into the proper index labels
+def _instruction_translation(sensor_label):
+    ret = ""
+    if "Battery Voltage" in sensor_label:ret = "batt_voltage"
+    elif "Vehicle Speed" in sensor_label: ret= "vehicle_speed"
+    elif "Engine Speed" in sensor_label: ret = "engine_speed"
+    elif "Water Temp." in sensor_label: ret = "water_temp" 
+    elif "Igition Timing" in sensor_label: ret = "ignition_timing"
+        # Note: this is misspelled in the actual datasheet, 
+        # so this is  the "correct" way to access it
+    elif "Airflow Sensor" in sensor_label: ret = "airflow"
+    elif "Throttle Position Sensors" in sensor_label: ret = "throttle_position"
+    elif "Knock Correction" in sensor_label: ret = "knock_correction" 
+    return ret
+
+def _json_outfile_formatter(json, listing):
+    temp = {
+            "batt_voltage":[],
+            "vehicle_speed":[],
+            "engine_speed":[],
+            "water_temp":[],
+            "ignition_timing":[],
+            "airflow":[],
+            "throttle_position":[],
+            "knock_correction":[]
+    }
+    try:
+        for func_type, pair in json[listing].iteritems():
+
+            sensor = _instruction_translation(func_type[func_type.find("(")+1:func_type.find(")")])
+            temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
+    except KeyError:
+        print "Ignored Error from Control Function"        
+    return temp
+
+def _prep_json_outfile(bins, ctrl_roms):
+    max_candidate_bins = {}
+    #print "AAAA"
+    for engine, engine_bin in bins.iteritems():
+        max_candidate_bins[engine] = {}
+
+        # first - define entry for the control for each engine
+        control_bin = ctrl_roms[engine]
+
+        max_candidate_bins[engine]['Control'] = _json_outfile_formatter(control_bin.max_jsons, "{} {}".format(control_bin.filename, control_bin.filename))
+
+        for rom in bins[engine]:
+            
+            if rom.filename not in ctrl_roms:
+
+                # next - populate every entry that is not the control
+                max_candidate_bins[engine][rom.filename] = _json_outfile_formatter(rom.max_jsons, "{} {}".format(control_bin.filename, rom.filename))
+ 
+    return max_candidate_bins
+
+def _json_parser_processing(xml, outfile, rom_list, ctrl_roms):
+
+    ctrl_list = []
+
+    for ctrl in xml:
+        ctrl_list.append(_json_parser_format(ctrl.get('name')))
+
+    #subp_args = ['-c', ctrl_list, '-j' , outfile, os.path.splitext(outfile)[0] + '.xlsx']
+    #execfile('JsonParser.py {}'.format(sys.argv))
+    ctrl_str = ""
+    for cs in ctrl_list:
+        ctrl_str = "{} {}".format(ctrl_str, cs)
+
+    print "Starting JSONParser..."
+    #-c {} ctrl_str, 
+
+    p = subprocess.Popen(['python ./JsonParser.py {} {} -j'.format(
+            outfile, os.path.splitext(outfile)[0] + '.xlsx')
+            ], stdout=subprocess.PIPE, shell=True)
+    output,err = p.communicate()
+    print (output)  
+
+    # Load in max JSON values, average Jaccards, use to sort into bins
+    with open('maxes.json', 'r') as json_in:
+        max_jsons = json.load(json_in)
+    
+    print "1"
+
+    # first - find all max values from JSONparser
+    for fn, rom in rom_list.iteritems():
+        for file_comp, maxes in max_jsons.iteritems():
+            if fn in file_comp: # and fn not in ctrl_list:
+                # if this ROM is not a control AND this set of maxes belongs to this ROM
+                rom.max_jsons[file_comp] = maxes
+
+    bins = {}
+    for engine, _ in ctrl_roms.iteritems():
+        bins[engine] = []
+
+    print "2"
+
+    # then  - use all features in the max to determine which bin to put each ROM
+    for fn,rom in rom_list.iteritems():
+        max_index = 0
+        engine_candidate = None
+
+        for engine, ctrl in ctrl_roms.iteritems():
+            index = rom._control_comparison(ctrl)
+            if index > max_index: # find most likely engine match given our control values
+                max_index = index
+                engine_candidate = engine
+            
+        rom.engine = engine_candidate
+        bins[engine].append(rom) # partition off that engine candidate to their engine bin for comparison
+   
+    print "3"
+
+    max_candidate_bins = _prep_json_outfile(bins, ctrl_roms)
+
+    return max_candidate_bins
+
 
 # Program Flag options
 # Default options - func_finder.py filename ...
@@ -748,26 +1006,32 @@ def main():
     # can also output JSON file as a .DOT file, or pull in a ROM and call R2
     parser = argparse.ArgumentParser(
         description='Import and process M7700 JSON Graph files.')
-
-    parser.add_argument('filename', metavar='filename', nargs='+', type=str, default=sys.stdin,
+    # rough option to run full list by default on all files in our bin directory - just for testing
+    parser.add_argument('filename', metavar='filename', nargs='?', type=str, default=("/home/greg/Documents/git/func_finder/bins/*.bin"),
                         help='M7700 ROM file for parsing')
 
     parser.add_argument('-o', '--outfile', metavar='outfile', default="file.json", type=str,
                         help='Specify Filename')
-                        
+ 
+    parser.add_argument('-x', '--xml', metavar='xml', default="file.xml", type=str,
+                        help='Specify XML Filename')
+
     parser.add_argument('-n', '--ngrams', metavar='ngrams', default=2, type=int,
                    help='Specify number of grams to break feature vectors into')
 
-    parser.add_argument('-i', '--ignore', metavar='ignore', default=False, type=bool,
-                   help='Ignore BRA instructions')
+    parser.add_argument('-i', '--ignore', metavar='ignore', nargs='+', type=str, default=[],
+                   help='Define filter instructions (needs at least one)')
     
     parser.add_argument('-m', '--min-grams', metavar='min_grams', type=int, default=1,
                         help='Specify minimum length of grams to include in output')
 
-    parser.add_argument('-e', '--edges', metavar='edges', default=False, type=bool,
+    parser.add_argument('-j', '--parse-json', dest='parse_json', action='store_true',
+                        help='Call Parse_Json script after feature generation.')
+
+    parser.add_argument('-e', '--edges',      dest='edges', action='store_true',
                    help='Process edges')
 
-    parser.add_argument('-b', '--bottlenecks', metavar='bottlenecks', default=False, type=bool,
+    parser.add_argument('-b', '--bottlenecks', dest='bottlenecks', action='store_true',
                    help='Search for and process bottleneck subgraphs')
 
     parser.add_argument('-d', '--depth', metavar='depth', default=1, type=int,
@@ -776,20 +1040,156 @@ def main():
     logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG)
 
     args = parser.parse_args()
+    if args.filename == "/home/greg/Documents/git/func_finder/bins/*.bin":
+        import glob
+        args.filename = glob.glob("/home/greg/Documents/git/func_finder/bins/*.bin")
     outfile = args.outfile
     jsons = {}
+    function_collections = {}
+    tree = ET.parse(args.xml)
+    root = tree.getroot()
+    xml = root.findall('control')
+    ctrl_roms = {} # bins to point to for the control funcs
+    rom_list = {}
 
     for infile in args.filename:
-        if infile is not None:
-            print("Opening file: {}".format(infile))
+        #if infile is not None:
+        
+        print("Opening file: {}".format(infile))
 
-        feature_dict = _parse_rom(infile, args)
-        jsons[infile] = feature_dict 
+        function_collections[infile], jsons[infile], rom = _parse_rom(infile, args)
+        rom_list[rom.filename] = rom
+
+        for ctrl in xml:
+            if (ctrl.get('name') in infile): # pull list of control functions
+                rom_nm = _json_parser_format(infile)
+                ctrl_roms[ctrl.find('engine').text] = rom_list[rom_nm]
+
+    #TODO:
+    # use feature vector generation from the ctrl roms to
+    # 1. ID which bins belong to that family based off those features
+    # 2. Separate those bins off
+    # 3. Separate the JSON files based off of those bins
+    # 4. Output and label accordingly
+
+    # IDEAS:
+    # Features contained in the XML are basically all I need to ID
+    #
+    # Pull based on reset vector
 
     with open(outfile, 'w') as out:
         json.dump(jsons, out, indent=4, sort_keys=True)
 
     out.close()
+    
+    if args.parse_json: # TODO: add some way to name the json output, I guess
+        max_candidate_bins = _json_parser_processing(xml, outfile, rom_list, ctrl_roms)
+
+        with open("maxes.json", 'w') as outfile:
+            json.dump(max_candidate_bins, outfile, indent=4, sort_keys=True)
+
+        print "Wrote addresses of max sensor candidates for each engine to file maxes.json."
+    #     ctrl_list = []
+
+    #     for ctrl in xml:
+    #         ctrl_list.append(_json_parser_format(ctrl.get('name')))
+
+    #     #subp_args = ['-c', ctrl_list, '-j' , outfile, os.path.splitext(outfile)[0] + '.xlsx']
+    #     #execfile('JsonParser.py {}'.format(sys.argv))
+    #     ctrl_str = ""
+    #     for cs in ctrl_list:
+    #         ctrl_str = "{} {}".format(ctrl_str, cs)
+
+    #     print "Starting JSONParser..."
+    #     #-c {} ctrl_str, 
+
+    #     p = subprocess.Popen(['python ./JsonParser.py {} {} -j'.format(
+    #             outfile, os.path.splitext(outfile)[0] + '.xlsx')
+    #             ], stdout=subprocess.PIPE, shell=True)
+    #     output,err = p.communicate()
+    #     print (output)  
+    #     # while p.poll() is None: # wait
+    #     #     l = p.stdout.readline() # This blocks until it receives a newline.
+    #     #     #print l
+    #     # print p.stdout.read()
+    #     try: 
+    #         # Load in max JSON values, average Jaccards, use to sort into bins
+    #         with open('maxes.json', 'r') as json_in:
+    #             max_jsons = json.load(json_in)
+            
+    #         # first - find all max values from JSONparser
+    #         for fn, rom in rom_list.iteritems():
+    #             for file_comp, maxes in max_jsons.iteritems():
+    #                 if fn in file_comp: # and fn not in ctrl_list:
+    #                     # if this ROM is not a control AND this set of maxes belongs to this ROM
+    #                     rom.max_jsons[file_comp] = maxes
+
+    #         bins = {}
+    #         for engine, _ in ctrl_roms.iteritems():
+    #             bins[engine] = []
+
+    #         # then  - use all features in the max to determine which bin to put each ROM
+    #         for fn,rom in rom_list.iteritems():
+    #             max_index = 0
+    #             engine_candidate = None
+
+    #             for engine, ctrl in ctrl_roms.iteritems():
+    #                 index = rom._control_comparison(ctrl)
+    #                 if index > max_index: # find most likely engine match given our control values
+    #                     max_index = index
+    #                     engine_candidate = engine
+                    
+    #             rom.engine = engine_candidate
+    #             bins[engine].append(rom) # partition off that engine candidate to their engine bin for comparison
+
+
+    # # Create JSON outfile for Pysensor, titled with ROM comparison
+    # # structure is
+    # # ENGINE1 - {
+    # # 
+    # #   CONTROL {
+    # #       CONTROL SENSOR VALUES/ADDRESSES/MAXES
+    # #   } 
+    # # 
+    # #   CANDIDATE_1...N {
+    # #       CANDIDATE SENSOR ADDRESSES/MAXES
+    # #   }
+    # # }
+
+
+
+        # TODO: 
+        # Using each bin, run pysensor with control information to locate sensor values in that bin
+
+
+    # this takes an eternity to run, subgraph analysis is NOT cost-effective
+    # ctrl_funcs = _pull_ctrl_funcs(ctrl_rom)
+    # mins = {}
+    # for rom, func_list in function_collections.iteritems():
+    #     if rom is not ctrl_rom:
+    #         for sensor, ctrl in ctrl_funcs.iteritems(): 
+    #             graph_min = 10000
+                
+    #             for func in func_list:
+
+    #                 gen = nx.optimize_edit_paths(func._cfg._netx_cfg, ctrl._cfg._netx_cfg, _compare)
+    #                 #print path  
+                    
+    #                 items = next(gen)
+    #                 costs = items[2]
+    #                 if graph_min > costs:
+    #                     graph_min = costs
+    #                     print graph_min
+    #             if sensor in mins:
+    #                 mins[sensor].append([ctrl, graph_min])
+    #             else:
+    #                 mins[sensor] = [ctrl, graph_min]
+    # #book = xlsxwriter.Workbook("test.xlsx")
+
+    # with open(outfile, 'w') as out:
+    #     json.dump(jsons, out, indent=4, sort_keys=True)
+
+    # out.close()
 
 print("Starting...")
 # start
