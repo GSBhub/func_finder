@@ -1,0 +1,10 @@
+*.bin
+bins/*
+test.sh
+*.json
+log_filename.txt
+.vscode/launch.json
+*.dot
+*.png
+*.m4
+*.txt

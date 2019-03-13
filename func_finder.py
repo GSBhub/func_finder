@@ -505,24 +505,26 @@ class ROM():
         comparison_index = 0.0
         jaccard_comparison = 0.0
         jacc_vals = 0
-        for label, maxes in self.max_jsons.iteritems():
-            for comparison_label, comp_val in maxes.iteritems():
-                if control.filename in label: # locate the control-self jaccard values
 
+        for label, maxes in self.max_jsons.iteritems():
+            if control.filename in label: # locate the control-self jaccard values
+                for _, comp_val in maxes.iteritems():
                     #for _, json in comp_val.iteritems():
                     jaccard_comparison += comp_val[1] # add jaccard value from each json structure
                     jacc_vals += 1
+        try:
+            jaccard_comparison = jaccard_comparison / jacc_vals
+        except ZeroDivisionError:
+            jaccard_comparison = 0
 
-        jaccard_comparison = jaccard_comparison / jacc_vals
-
-        if control.RST == self.RST:
-            comparison_index += 1
-        if control.START == self.START:
-            comparison_index += 1          
+        # if control.RST == self.RST:
+        #     comparison_index += 1
+        # if control.START == self.START:
+        #     comparison_index += 1          
 
         comparison_index += jaccard_comparison
 
-        return comparison_index / 3
+        return comparison_index 
 
 # locates the reset vector address from a valid M7700 binary
 # using a currently open radare2 session
@@ -899,13 +901,11 @@ def _json_outfile_formatter(json, listing):
             "throttle_position":[],
             "knock_correction":[]
     }
-    try:
-        for func_type, pair in json[listing].iteritems():
+    for func_type, pair in json[listing].iteritems():
 
-            sensor = _instruction_translation(func_type[func_type.find("(")+1:func_type.find(")")])
-            temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
-    except KeyError:
-        print "Ignored Error from Control Function"        
+        sensor = _instruction_translation(func_type[func_type.find("(")+1:func_type.find(")")])
+        temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
+
     return temp
 
 def _prep_json_outfile(bins, ctrl_roms):
@@ -918,7 +918,7 @@ def _prep_json_outfile(bins, ctrl_roms):
         control_bin = ctrl_roms[engine]
 
         max_candidate_bins[engine]['Control'] = _json_outfile_formatter(control_bin.max_jsons, "{} {}".format(control_bin.filename, control_bin.filename))
-
+   
         for rom in bins[engine]:
             
             if rom.filename not in ctrl_roms:
@@ -928,12 +928,12 @@ def _prep_json_outfile(bins, ctrl_roms):
  
     return max_candidate_bins
 
-def _json_parser_processing(xml, outfile, rom_list, ctrl_roms):
+def _json_parser_processing(json_in, outfile, rom_list, ctrl_roms):
 
     ctrl_list = []
 
-    for ctrl in xml:
-        ctrl_list.append(_json_parser_format(ctrl.get('name')))
+    for ctrl_name, _ in json_in.iteritems():
+        ctrl_list.append(_json_parser_format(ctrl_name))
 
     #subp_args = ['-c', ctrl_list, '-j' , outfile, os.path.splitext(outfile)[0] + '.xlsx']
     #execfile('JsonParser.py {}'.format(sys.argv))
@@ -948,14 +948,13 @@ def _json_parser_processing(xml, outfile, rom_list, ctrl_roms):
             outfile, os.path.splitext(outfile)[0] + '.xlsx')
             ], stdout=subprocess.PIPE, shell=True)
     output,err = p.communicate()
+    
     print (output)  
 
     # Load in max JSON values, average Jaccards, use to sort into bins
-    with open('maxes.json', 'r') as json_in:
-        max_jsons = json.load(json_in)
+    with open('parser_maxes.json', 'r') as json_tmp_val:
+        max_jsons = json.load(json_tmp_val)
     
-    print "1"
-
     # first - find all max values from JSONparser
     for fn, rom in rom_list.iteritems():
         for file_comp, maxes in max_jsons.iteritems():
@@ -967,23 +966,25 @@ def _json_parser_processing(xml, outfile, rom_list, ctrl_roms):
     for engine, _ in ctrl_roms.iteritems():
         bins[engine] = []
 
-    print "2"
-
     # then  - use all features in the max to determine which bin to put each ROM
+    max_index = 0.0
     for fn,rom in rom_list.iteritems():
-        max_index = 0
         engine_candidate = None
 
         for engine, ctrl in ctrl_roms.iteritems():
+            if engine_candidate is None:
+                engine_candidate = engine
+
             index = rom._control_comparison(ctrl)
-            if index > max_index: # find most likely engine match given our control values
+
+            if index > max_index: 
+                # find most likely engine match given our control values
                 max_index = index
                 engine_candidate = engine
-            
+
         rom.engine = engine_candidate
-        bins[engine].append(rom) # partition off that engine candidate to their engine bin for comparison
-   
-    print "3"
+        bins[rom.engine].append(rom) # partition off that engine candidate to their engine bin for comparison
+        max_index = 0.0
 
     max_candidate_bins = _prep_json_outfile(bins, ctrl_roms)
 
@@ -1013,8 +1014,8 @@ def main():
     parser.add_argument('-o', '--outfile', metavar='outfile', default="file.json", type=str,
                         help='Specify Filename')
  
-    parser.add_argument('-x', '--xml', metavar='xml', default="file.xml", type=str,
-                        help='Specify XML Filename')
+    parser.add_argument('-x', '--xml', metavar='xml', default="parser_settings.json", type=str,
+                        help='Specify XML/JSON Settings Filename')
 
     parser.add_argument('-n', '--ngrams', metavar='ngrams', default=2, type=int,
                    help='Specify number of grams to break feature vectors into')
@@ -1046,9 +1047,10 @@ def main():
     outfile = args.outfile
     jsons = {}
     function_collections = {}
-    tree = ET.parse(args.xml)
-    root = tree.getroot()
-    xml = root.findall('control')
+    #tree = ET.parse(args.xml)
+    #root = tree.getroot()
+    with open(args.xml, 'r') as fin:
+        json_settings = json.load(fin)#root.findall('control') TODO: change var names to json
     ctrl_roms = {} # bins to point to for the control funcs
     rom_list = {}
 
@@ -1060,10 +1062,10 @@ def main():
         function_collections[infile], jsons[infile], rom = _parse_rom(infile, args)
         rom_list[rom.filename] = rom
 
-        for ctrl in xml:
-            if (ctrl.get('name') in infile): # pull list of control functions
+        for ctrl_name, ctrl_vals in json_settings.iteritems():
+            if (ctrl_name in infile): # pull list of control functions
                 rom_nm = _json_parser_format(infile)
-                ctrl_roms[ctrl.find('engine').text] = rom_list[rom_nm]
+                ctrl_roms[ctrl_vals['engine']] = rom_list[rom_nm]
 
     #TODO:
     # use feature vector generation from the ctrl roms to
@@ -1080,15 +1082,15 @@ def main():
     with open(outfile, 'w') as out:
         json.dump(jsons, out, indent=4, sort_keys=True)
 
-    out.close()
+        out.close()
     
     if args.parse_json: # TODO: add some way to name the json output, I guess
-        max_candidate_bins = _json_parser_processing(xml, outfile, rom_list, ctrl_roms)
+        max_candidate_bins = _json_parser_processing(json_settings, outfile, rom_list, ctrl_roms)
 
-        with open("maxes.json", 'w') as outfile:
+        with open("fcg_maxes.json", 'w') as outfile:
             json.dump(max_candidate_bins, outfile, indent=4, sort_keys=True)
-
-        print "Wrote addresses of max sensor candidates for each engine to file maxes.json."
+            outfile.close()
+        print "Wrote addresses of max sensor candidates for each engine to file fcg_maxes.json."
     #     ctrl_list = []
 
     #     for ctrl in xml:

@@ -321,7 +321,8 @@ def _create_tables(control_files, ecu_files, gt):
             # Loop through functions in ECU files
             for function_1, function_1_hashes in control_file.functions.items():
                 for function_2, function_2_hashes in ecu_file.functions.items():
-                    for sensor, raw_addresses in gt[control_file.name].items():
+
+                    for sensor, raw_addresses in gt[control].items():
                         addresses = []
                         for raw_address in raw_addresses:
                             addresses.append(ur"{}".format(raw_address.rstrip())) 
@@ -468,6 +469,7 @@ if __name__ == '__main__':
             # write GT data to sheets
 
     jsons = {}
+    print args.json_test
     if args.json_test: # JSON rep of max value in each row
         for table in tables:
             jsons[table.name] = OrderedDict()
@@ -477,10 +479,11 @@ if __name__ == '__main__':
                     if cell.flags['Max_Row'] is True:
                         jsons[table.name][sensor] = cell.func_addr, cell.jaccard
 
-        with open("maxes.json", 'w') as fout: # write JSON to file
+        with open("parser_maxes.json", 'w') as fout: # write JSON to file
             json.dump(jsons, fout, indent=4, sort_keys=True)
-
+            fout.close()
+            
     if args.no_output is False:
         book.close()
         print('\nWrote values to {}\n'.format(args.xlsx))
-        print('\nWrote Max array values to maxes.json')
+        print('\nWrote Max array values to parser_maxes.json')

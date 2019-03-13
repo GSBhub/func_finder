@@ -18,7 +18,7 @@
         <ROM_Start addr="0x9000"/>
     </control>
     
-    <control name="744042-1994-UKDM-Wrx-EJ20">
+    <control name="744042-1994-UKDM-Wrx-EJ20T">
         <engine>EJ20</engine>
         <year>1994</year>
         <ROM_ID>744042</ROM_ID>
