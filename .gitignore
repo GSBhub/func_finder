@@ -2,9 +2,10 @@
 bins/*
 test.sh
 *.json
-log_filename.txt
+*.txt
 .vscode/launch.json
 *.dot
 *.png
 *.m4
 *.txt
+*.xlsx

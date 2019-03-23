@@ -134,10 +134,10 @@ class block ():
                 #             opcodes.append(param)
 
         # split list into N-gram opcodes if number of grams in list is sufficient         
-        if n_grams < len(opcodes):
+        if n_grams > 0 and n_grams < len(opcodes):
             grams = zip(*[opcodes[i:] for i in range(n_grams)])
         # otherwise, check to see if list passes the minimum length requirement
-        elif min_len <= len(opcodes):
+        elif n_grams == 0 or min_len <= len(opcodes):
             grams = ["".join(opcodes)] # just sub the whole list
 
         if grams is not None:
@@ -218,6 +218,9 @@ class block ():
     # Full list of args can be located down by the main method
     def _get_features(self, args):
         ret = []
+        if args.hashed_list:
+            return self._get_hashed_list()
+
         ret.extend(self._n_gram(args)) # placeholder values for now
 
         if args.edges:
@@ -300,7 +303,6 @@ class CFG:
                             self._netx_cfg.add_edge(block_obj, block_obj._fail)
                             self._netx_cfg[block_obj][block_obj._fail]["color"] = "red"
                            
-
                         except KeyError:
                             # KeyErrors result if no valid jumps exist, can be safely ignored
                             continue
@@ -342,7 +344,6 @@ class CFG:
         # TODO: add in an optional depth detection
         
         ret = dict() # feature list, containing grams back
-        
 
         # first - identify all bottlenecks within a function, store in list
         bottlenecks = self._get_bottlenecks(self._first, visited)
@@ -449,7 +450,8 @@ class function:
         ret += self._get_features_helper(self._cfg._first, [], args)
 
         if args.bottlenecks:
-            ret = self._cfg._bottlenecks(args, [], args.depth)
+            ret += self._cfg._bottlenecks(args, [], args.depth)
+
         return ret
 
     # recursive helper for _get_features
@@ -483,7 +485,7 @@ class ROM():
         self.functions = functions
         self.RST = RST # RST vector address
         self.START = START # length of main internal loop
-        self.max_jsons = {} # max JSON values from JSONParser 
+        self.max_jsons = OrderedDict() # max JSON values from JSONParser 
         self.engine = "???"
 
     # returns similarity percentage of two ROMs based on internal features of this data structure
@@ -494,8 +496,6 @@ class ROM():
     def _compare(self, rom_cmp):
 
         comparison_index = 0.0
-
-
         return "WIP"
 
     # specific comparison function similar to above 
@@ -594,7 +594,8 @@ def _populate_cfg(addr, func_json):
 #  found children addresses are added to a "_visited" global data structure, and are not recursed if _visited multiple times
 #       instead, _visited children just have their list of _parents updated whenever something else finds them
 def _recursive_parse_func(addr, visited, r2):
-    
+    #r2.cmd("a2f")
+
     r2.cmd("0x{:04x}".format(addr))     # seek to address
     logging.debug("R2 Command used: '0x{:04x}'".format(addr))
 
@@ -790,7 +791,7 @@ def _parse_rom(infile, args):
         logging.debug("e anal.to: {}".format(r2.cmd("e anal.to")))
 
         r2.cmd("0x{:04x}".format(rst))
-        #r2.cmd("aaa")
+        r2.cmd("aaaa")
 
         # build func from a recursive function parse
         func_list = []
@@ -906,13 +907,16 @@ def _json_outfile_formatter(json, listing):
         sensor = _instruction_translation(func_type[func_type.find("(")+1:func_type.find(")")])
         temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
 
+    for sensor, li in temp.iteritems():
+        li = li.sort()
+
     return temp
 
 def _prep_json_outfile(bins, ctrl_roms):
-    max_candidate_bins = {}
+    max_candidate_bins = OrderedDict()
     #print "AAAA"
     for engine, engine_bin in bins.iteritems():
-        max_candidate_bins[engine] = {}
+        max_candidate_bins[engine] = OrderedDict()
 
         # first - define entry for the control for each engine
         control_bin = ctrl_roms[engine]
@@ -958,11 +962,12 @@ def _json_parser_processing(json_in, outfile, rom_list, ctrl_roms):
     # first - find all max values from JSONparser
     for fn, rom in rom_list.iteritems():
         for file_comp, maxes in max_jsons.iteritems():
+            rom.max_jsons[file_comp] = OrderedDict()
             if fn in file_comp: # and fn not in ctrl_list:
                 # if this ROM is not a control AND this set of maxes belongs to this ROM
                 rom.max_jsons[file_comp] = maxes
 
-    bins = {}
+    bins = OrderedDict()
     for engine, _ in ctrl_roms.iteritems():
         bins[engine] = []
 
@@ -983,6 +988,7 @@ def _json_parser_processing(json_in, outfile, rom_list, ctrl_roms):
                 engine_candidate = engine
 
         rom.engine = engine_candidate
+        
         bins[rom.engine].append(rom) # partition off that engine candidate to their engine bin for comparison
         max_index = 0.0
 
@@ -1032,6 +1038,9 @@ def main():
     parser.add_argument('-e', '--edges',      dest='edges', action='store_true',
                    help='Process edges')
 
+    parser.add_argument('-z', '--hashed_list',dest='hashed_list', action='store_true',
+                   help='Legacy Hashed List Generator')
+
     parser.add_argument('-b', '--bottlenecks', dest='bottlenecks', action='store_true',
                    help='Search for and process bottleneck subgraphs')
 
@@ -1045,14 +1054,14 @@ def main():
         import glob
         args.filename = glob.glob("/home/greg/Documents/git/func_finder/bins/*.bin")
     outfile = args.outfile
-    jsons = {}
-    function_collections = {}
+    jsons = OrderedDict()
+    function_collections = OrderedDict()
     #tree = ET.parse(args.xml)
     #root = tree.getroot()
     with open(args.xml, 'r') as fin:
         json_settings = json.load(fin)#root.findall('control') TODO: change var names to json
-    ctrl_roms = {} # bins to point to for the control funcs
-    rom_list = {}
+    ctrl_roms = OrderedDict() # bins to point to for the control funcs
+    rom_list = OrderedDict()
 
     for infile in args.filename:
         #if infile is not None:
