@@ -599,8 +599,10 @@ def _recursive_parse_func(addr, visited, r2):
     r2.cmd("0x{:04x}".format(addr))     # seek to address
     logging.debug("R2 Command used: '0x{:04x}'".format(addr))
 
+    r2.cmd("sf.")
+
     #r2.cmd("af-")
-    r2.cmd("aa")
+    #r2.cmd("aa")
 
     addr = int(r2.cmd("s"), 16)
 
@@ -695,9 +697,9 @@ def _linear_parse_func(func, visited, r2):
     l = _parse_call_str(func_str)
 
     for addr in l:
-        if addr not in visited.keys():
+        #if addr not in visited.keys():
             # attempt to manually parse each address with recursion
-            func_list.append(_recursive_parse_func(addr, visited, r2))
+        func_list.append(_recursive_parse_func(addr, visited, r2))
 
     return func_list
 
@@ -791,7 +793,7 @@ def _parse_rom(infile, args):
         logging.debug("e anal.to: {}".format(r2.cmd("e anal.to")))
 
         r2.cmd("0x{:04x}".format(rst))
-        r2.cmd("aaaa")
+        r2.cmd("aaa")
 
         # build func from a recursive function parse
         func_list = []
@@ -887,7 +889,7 @@ def _instruction_translation(sensor_label):
         # Note: this is misspelled in the actual datasheet, 
         # so this is  the "correct" way to access it
     elif "Airflow Sensor" in sensor_label: ret = "airflow"
-    elif "Throttle Position Sensors" in sensor_label: ret = "throttle_position"
+    elif "Throttle Position Sensor" in sensor_label: ret = "throttle_position"
     elif "Knock Correction" in sensor_label: ret = "knock_correction" 
     return ret
 
@@ -903,8 +905,8 @@ def _json_outfile_formatter(json, listing):
             "knock_correction":[]
     }
     for func_type, pair in json[listing].iteritems():
-
-        sensor = _instruction_translation(func_type[func_type.find("(")+1:func_type.find(")")])
+        a = func_type[func_type.find("(")+1:func_type.find(")")]
+        sensor = _instruction_translation(a)
         temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
 
     for sensor, li in temp.iteritems():

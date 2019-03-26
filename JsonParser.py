@@ -41,7 +41,7 @@ class EcuFile:
         split = file_name.split('/')
         self.file_name = split[len(split) - 1]
         
-        local_gt = dict(gt)
+        local_gt = dict(gt) # clone GT, we're fixing some of the errors in the man address
 
         r2 = r2pipe.open('./bins/' + self.file_name, ["-2"])
       
@@ -316,46 +316,61 @@ def _create_tables(control_files, ecu_files, gt):
     for control_file in control_files:
         control = control_file.name
         for ecu_file in ecu_files:
+            table_indexes = set()
             table = IndexTable(control_file, ecu_file)
 
+            addresses = {}
+            for sensor, raw_addresses in gt[control].items():
+                addresses[sensor] = []
+                for raw_address in raw_addresses:
+                    addresses[sensor].append(ur"{}".format(raw_address.rstrip())) 
+
             # Loop through functions in ECU files
-            for function_1, function_1_hashes in control_file.functions.items():
-                for function_2, function_2_hashes in ecu_file.functions.items():
+            #for function_1, function_1_hashes in control_file.functions.items():
+            for sensor, hash_list in gt[control].iteritems():
+                for function_1 in hash_list:
+                    function_1_hashes = control_file.functions[function_1]
+                    for function_2, function_2_hashes in ecu_file.functions.items():
+                        #for sensor, _ in gt[control].iteritems():
+                            # addresses = []
+                            # for raw_address in raw_addresses:
+                            #     addresses.append(ur"{}".format(raw_address.rstrip())) 
 
-                    for sensor, raw_addresses in gt[control].items():
-                        addresses = []
-                        for raw_address in raw_addresses:
-                            addresses.append(ur"{}".format(raw_address.rstrip())) 
-                        if function_1 in addresses:
-                        # for all sensors and their functions in the list of ground truth items - The Row value
-                            if type (function_2_hashes) is dict or type(function_1_hashes) is dict:
-                                # test index method - 
-                                # try comparing jaccard dist. for blocks, then average JD
-                                # merit - compares bottlenecks to each other vs. whole func
-                                i = 0
-                                average_jaccard = 0
-                                for _, blk in function_1_hashes.iteritems():
-                                    for _, blk2 in function_2_hashes.iteritems():
-                                        try:
-                                            average_jaccard += _jaccard_index(blk, blk2)
-                                        except ZeroDivisionError:
-                                            average_jaccard += 0
-                                        i += 1
+                            #if function_1 in addresses[sensor]:
+                            # for all sensors and their functions in the list of ground truth items - The Row value
+                        
+                        if type (function_2_hashes) is dict or type(function_1_hashes) is dict:
+                            # test index method - 
+                            # try comparing jaccard dist. for blocks, then average JD
+                            # merit - compares bottlenecks to each other vs. whole func
+                            i = 0
+                            average_jaccard = 0
+                            for _, blk in function_1_hashes.iteritems():
+                                for _, blk2 in function_2_hashes.iteritems():
+                                    try:
+                                        average_jaccard += _jaccard_index(blk, blk2)
+                                    except ZeroDivisionError:
+                                        average_jaccard += 0
+                                    i += 1
 
-                                table.push_index(
-                                    function_1 + ' (' + sensor + ')',
-                                    function_2,
-                                    average_jaccard/i
-                                )   
-                                break
-                            else:
-                                table.push_index(
-                                    function_1 + ' (' + sensor + ')',
-                                    function_2,
-                                    _jaccard_index(function_1_hashes, function_2_hashes)
-                                )
-                                break
+                            table.push_index(
+                                function_1 + ' (' + sensor + ')',
+                                function_2,
+                                average_jaccard/i
+                            )   
+                          #  break
+                        else:
+                            row_name = function_1 + ' (' + sensor + ')'
+                            
+                            table.push_index(row_name,
+                                function_2,
+                                _jaccard_index(function_1_hashes, function_2_hashes)
+                            )
+                            table_indexes.add(row_name)
+                       #     break
+
             tables.append(table)
+
     return tables
 
 # helper method to quickly convert our file names into a more consise format
@@ -469,7 +484,6 @@ if __name__ == '__main__':
             # write GT data to sheets
 
     jsons = {}
-    print args.json_test
     if args.json_test: # JSON rep of max value in each row
         for table in tables:
             jsons[table.name] = OrderedDict()
