@@ -445,7 +445,7 @@ class function:
 
         if args.bottlenecks:
             bn = self._cfg._bottlenecks(args, [], args.depth)
-            if bn is not {}:
+            if bn is not {} and len(bn) is not 0:
                 ret.append(bn)
         return ret
 

@@ -302,7 +302,12 @@ def _jaccard_index(list_1, list_2):
 
     union = len(list_1) + len(list_2) - intersection
 
-    return float(intersection) / union
+    if len(list_1) == len(list_2) == 0:
+        ret = None
+    else:
+        ret = float(intersection) / union
+
+    return ret 
 
 def _create_gt_sorted_list(control):
     ret = OrderedDict()
@@ -355,55 +360,36 @@ def _create_tables(control_files, ecu_files, gt):
 
                         for val in function_1_hashes:
                             if type (val) is dict:
-                                func1_bottleneck_list.append(val.items())
-                            #else:
-                            func1_instr_list.append(val)
+                                for addr, items in val.iteritems():
+                                    func1_bottleneck_list.extend(items)
+                            else:
+                                func1_instr_list.append(val)
 
                         for val in function_2_hashes:
                             if type (val) is dict:
-                                func2_bottleneck_list.append(val.items())
-                            #else:
-                            func2_instr_list.append(val)
+                                for addr, items in val.iteritems():
+                                    func2_bottleneck_list.extend(items)
+                            else:
+                                func2_instr_list.append(val)
 
                             # test index method - 
                             # try comparing jaccard dist. for blocks, then average JD
                             # merit - compares bottlenecks to each other vs. whole func
                             
-                        i = 0
-                        average_jaccard = 0
-                        for bn in func1_bottleneck_list:
-                            max_jd = 0
-                            jd = 0
-                            for bn2 in func2_bottleneck_list:
-                                try:
-                                    jd += _jaccard_index(bn, bn2)
-                                except ZeroDivisionError:
-                                    jd += 0
-                                if jd > max_jd:
-                                    max_jd = jd
+                        average_jaccard = None
 
-                            average_jaccard += max_jd
-                            i += 1
-                         
-                        average_jaccard /= i
-                       
-                        # if type (function_2_hashes) is dict or type(function_1_hashes) is dict:
+                        #if len(func1_bottleneck_list) > 0:
+                        average_jaccard = _jaccard_index(func1_bottleneck_list, func2_bottleneck_list)
+                        
                         #     # test index method - 
                         #     # try comparing jaccard dist. for blocks, then average JD
                         #     # merit - compares bottlenecks to each other vs. whole func
 
-                        #     # table.push_index(
-                        #     #     function_1 + ' (' + sensor + ')',
-                        #     #     function_2,
-                        #     #     average_jaccard/i
-                        #     # )   
-                        #   #  break
-                        # else:
-
                         row_name = function_1 + ' (' + sensor + ')'
                         total_ji = _jaccard_index(function_1_hashes, function_2_hashes)
 
-                        total_ji = (total_ji + average_jaccard) / 2
+                        if average_jaccard is not None:
+                            total_ji = (total_ji + average_jaccard) / 2
 
                         table.push_index(row_name,
                             function_2,
