@@ -340,25 +340,19 @@ class CFG:
     # default depth - 2
     def _bottlenecks(self, args, visited, depth=2):
         # Very WIP
-        # TODO: find bottlenecks, analyze subgraphs, create feature vector out of that
-        # TODO: add in an optional depth detection
-        
+
         ret = dict() # feature list, containing grams back
 
         # first - identify all bottlenecks within a function, store in list
         bottlenecks = self._get_bottlenecks(self._first, visited)
         # then  - get features from bottlenecks of depth N back
         for bottleneck in bottlenecks:
-            bn = self._netx_cfg.subgraph(self._netx_cfg.neighbors(bottleneck))
+            #bn = self._netx_cfg.subgraph(self._netx_cfg.neighbors(bottleneck))
 
             ret[bottleneck._base_addr] = (
                 self._bottleneck_seek_back(
                     bottleneck, depth, args, visited)
                 )
-            # nx.draw(bn)
-            # plt.show()
-            # nx.draw(self._netx_cfg)
-            # plt.show()
 
         return ret
 
@@ -447,11 +441,12 @@ class function:
         if self._cfg._first is None:
             return
 
-        ret += self._get_features_helper(self._cfg._first, [], args)
+        ret = (self._get_features_helper(self._cfg._first, [], args))
 
         if args.bottlenecks:
-            ret += self._cfg._bottlenecks(args, [], args.depth)
-
+            bn = self._cfg._bottlenecks(args, [], args.depth)
+            if bn is not {}:
+                ret.append(bn)
         return ret
 
     # recursive helper for _get_features
@@ -1102,60 +1097,7 @@ def main():
             json.dump(max_candidate_bins, outfile, indent=4, sort_keys=True)
             outfile.close()
         print "Wrote addresses of max sensor candidates for each engine to file fcg_maxes.json."
-    #     ctrl_list = []
-
-    #     for ctrl in xml:
-    #         ctrl_list.append(_json_parser_format(ctrl.get('name')))
-
-    #     #subp_args = ['-c', ctrl_list, '-j' , outfile, os.path.splitext(outfile)[0] + '.xlsx']
-    #     #execfile('JsonParser.py {}'.format(sys.argv))
-    #     ctrl_str = ""
-    #     for cs in ctrl_list:
-    #         ctrl_str = "{} {}".format(ctrl_str, cs)
-
-    #     print "Starting JSONParser..."
-    #     #-c {} ctrl_str, 
-
-    #     p = subprocess.Popen(['python ./JsonParser.py {} {} -j'.format(
-    #             outfile, os.path.splitext(outfile)[0] + '.xlsx')
-    #             ], stdout=subprocess.PIPE, shell=True)
-    #     output,err = p.communicate()
-    #     print (output)  
-    #     # while p.poll() is None: # wait
-    #     #     l = p.stdout.readline() # This blocks until it receives a newline.
-    #     #     #print l
-    #     # print p.stdout.read()
-    #     try: 
-    #         # Load in max JSON values, average Jaccards, use to sort into bins
-    #         with open('maxes.json', 'r') as json_in:
-    #             max_jsons = json.load(json_in)
-            
-    #         # first - find all max values from JSONparser
-    #         for fn, rom in rom_list.iteritems():
-    #             for file_comp, maxes in max_jsons.iteritems():
-    #                 if fn in file_comp: # and fn not in ctrl_list:
-    #                     # if this ROM is not a control AND this set of maxes belongs to this ROM
-    #                     rom.max_jsons[file_comp] = maxes
-
-    #         bins = {}
-    #         for engine, _ in ctrl_roms.iteritems():
-    #             bins[engine] = []
-
-    #         # then  - use all features in the max to determine which bin to put each ROM
-    #         for fn,rom in rom_list.iteritems():
-    #             max_index = 0
-    #             engine_candidate = None
-
-    #             for engine, ctrl in ctrl_roms.iteritems():
-    #                 index = rom._control_comparison(ctrl)
-    #                 if index > max_index: # find most likely engine match given our control values
-    #                     max_index = index
-    #                     engine_candidate = engine
-                    
-    #             rom.engine = engine_candidate
-    #             bins[engine].append(rom) # partition off that engine candidate to their engine bin for comparison
-
-
+ 
     # # Create JSON outfile for Pysensor, titled with ROM comparison
     # # structure is
     # # ENGINE1 - {
@@ -1168,41 +1110,6 @@ def main():
     # #       CANDIDATE SENSOR ADDRESSES/MAXES
     # #   }
     # # }
-
-
-
-        # TODO: 
-        # Using each bin, run pysensor with control information to locate sensor values in that bin
-
-
-    # this takes an eternity to run, subgraph analysis is NOT cost-effective
-    # ctrl_funcs = _pull_ctrl_funcs(ctrl_rom)
-    # mins = {}
-    # for rom, func_list in function_collections.iteritems():
-    #     if rom is not ctrl_rom:
-    #         for sensor, ctrl in ctrl_funcs.iteritems(): 
-    #             graph_min = 10000
-                
-    #             for func in func_list:
-
-    #                 gen = nx.optimize_edit_paths(func._cfg._netx_cfg, ctrl._cfg._netx_cfg, _compare)
-    #                 #print path  
-                    
-    #                 items = next(gen)
-    #                 costs = items[2]
-    #                 if graph_min > costs:
-    #                     graph_min = costs
-    #                     print graph_min
-    #             if sensor in mins:
-    #                 mins[sensor].append([ctrl, graph_min])
-    #             else:
-    #                 mins[sensor] = [ctrl, graph_min]
-    # #book = xlsxwriter.Workbook("test.xlsx")
-
-    # with open(outfile, 'w') as out:
-    #     json.dump(jsons, out, indent=4, sort_keys=True)
-
-    # out.close()
 
 print("Starting...")
 # start

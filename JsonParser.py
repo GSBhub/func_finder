@@ -304,6 +304,15 @@ def _jaccard_index(list_1, list_2):
 
     return float(intersection) / union
 
+def _create_gt_sorted_list(control):
+    ret = OrderedDict()
+    for sensor, addresses in control.iteritems():
+        for address in addresses: 
+            if (address not in ret.keys()):
+                ret[address] = [sensor]
+            else:
+                ret[address].append(sensor)
+    return ret
 
 def _create_tables(control_files, ecu_files, gt):
     """
@@ -313,8 +322,12 @@ def _create_tables(control_files, ecu_files, gt):
     :returns: List of created tables
     """
     tables = []
+
+
     for control_file in control_files:
+
         control = control_file.name
+        gt_sorted_list = _create_gt_sorted_list(gt[control])
         for ecu_file in ecu_files:
             table_indexes = set()
             table = IndexTable(control_file, ecu_file)
@@ -327,48 +340,79 @@ def _create_tables(control_files, ecu_files, gt):
 
             # Loop through functions in ECU files
             #for function_1, function_1_hashes in control_file.functions.items():
-            for sensor, hash_list in gt[control].iteritems():
-                for function_1 in hash_list:
+            #for sensor, addresses in gt[control].iteritems():
+            for function_1, sensors in gt_sorted_list.iteritems():
+                for sensor in sensors:
                     function_1_hashes = control_file.functions[function_1]
-                    for function_2, function_2_hashes in ecu_file.functions.items():
-                        #for sensor, _ in gt[control].iteritems():
-                            # addresses = []
-                            # for raw_address in raw_addresses:
-                            #     addresses.append(ur"{}".format(raw_address.rstrip())) 
 
-                            #if function_1 in addresses[sensor]:
-                            # for all sensors and their functions in the list of ground truth items - The Row value
+                    for function_2, function_2_hashes in ecu_file.functions.items():
+                    # for all sensors and their functions in the list of ground truth items - The Row value
                         
-                        if type (function_2_hashes) is dict or type(function_1_hashes) is dict:
+                        func1_bottleneck_list = []
+                        func2_bottleneck_list = []    
+                        func1_instr_list = []
+                        func2_instr_list = []
+
+                        for val in function_1_hashes:
+                            if type (val) is dict:
+                                func1_bottleneck_list.append(val.items())
+                            #else:
+                            func1_instr_list.append(val)
+
+                        for val in function_2_hashes:
+                            if type (val) is dict:
+                                func2_bottleneck_list.append(val.items())
+                            #else:
+                            func2_instr_list.append(val)
+
                             # test index method - 
                             # try comparing jaccard dist. for blocks, then average JD
                             # merit - compares bottlenecks to each other vs. whole func
-                            i = 0
-                            average_jaccard = 0
-                            for _, blk in function_1_hashes.iteritems():
-                                for _, blk2 in function_2_hashes.iteritems():
-                                    try:
-                                        average_jaccard += _jaccard_index(blk, blk2)
-                                    except ZeroDivisionError:
-                                        average_jaccard += 0
-                                    i += 1
-
-                            table.push_index(
-                                function_1 + ' (' + sensor + ')',
-                                function_2,
-                                average_jaccard/i
-                            )   
-                          #  break
-                        else:
-                            row_name = function_1 + ' (' + sensor + ')'
                             
-                            table.push_index(row_name,
-                                function_2,
-                                _jaccard_index(function_1_hashes, function_2_hashes)
-                            )
-                            table_indexes.add(row_name)
+                        i = 0
+                        average_jaccard = 0
+                        for bn in func1_bottleneck_list:
+                            max_jd = 0
+                            jd = 0
+                            for bn2 in func2_bottleneck_list:
+                                try:
+                                    jd += _jaccard_index(bn, bn2)
+                                except ZeroDivisionError:
+                                    jd += 0
+                                if jd > max_jd:
+                                    max_jd = jd
+
+                            average_jaccard += max_jd
+                            i += 1
+                         
+                        average_jaccard /= i
+                       
+                        # if type (function_2_hashes) is dict or type(function_1_hashes) is dict:
+                        #     # test index method - 
+                        #     # try comparing jaccard dist. for blocks, then average JD
+                        #     # merit - compares bottlenecks to each other vs. whole func
+
+                        #     # table.push_index(
+                        #     #     function_1 + ' (' + sensor + ')',
+                        #     #     function_2,
+                        #     #     average_jaccard/i
+                        #     # )   
+                        #   #  break
+                        # else:
+
+                        row_name = function_1 + ' (' + sensor + ')'
+                        total_ji = _jaccard_index(function_1_hashes, function_2_hashes)
+
+                        total_ji = (total_ji + average_jaccard) / 2
+
+                        table.push_index(row_name,
+                            function_2,
+                            total_ji
+                        )
+                        table_indexes.add(row_name)
                        #     break
 
+        
             tables.append(table)
 
     return tables
