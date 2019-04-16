@@ -348,84 +348,87 @@ def _create_tables(control_files, ecu_files, gt):
             #for function_1, function_1_hashes in control_file.functions.items():
             #for sensor, addresses in gt[control].iteritems():
             for function_1, sensors in gt_sorted_list.iteritems():
-                for sensor in sensors:
-                    function_1_hashes = control_file.functions[function_1]
-                    func1_bottleneck_list = []
-                    func1_instr_list = []
+                if u'0x0' not in function_1:
+                    for sensor in sensors:
+                        try:
+                            function_1_hashes = control_file.functions[function_1]
+                            func1_bottleneck_list = []
+                            func1_instr_list = []
 
-                    for val in function_1_hashes:
-                        if type (val) is dict:
-                            func1_bottleneck_list.extend(val.values())
-                        else:
-                            func1_instr_list.append(val)
+                            for val in function_1_hashes:
+                                if type (val) is dict:
+                                    func1_bottleneck_list.extend(val.values())
+                                else:
+                                    func1_instr_list.append(val)
 
-                    for function_2, function_2_hashes in ecu_file.functions.items():
-                    # for all sensors and their functions in the list of ground truth items - The Row value
-                        
-                        #func1_bottleneck_list = []
-                        #func1_instr_list = []
-                        func2_bottleneck_list = []    
-                        func2_instr_list = []
+                            for function_2, function_2_hashes in ecu_file.functions.items():
+                            # for all sensors and their functions in the list of ground truth items - The Row value
+                                
+                                #func1_bottleneck_list = []
+                                #func1_instr_list = []
+                                func2_bottleneck_list = []    
+                                func2_instr_list = []
 
-                        # for val in function_1_hashes:
-                        #     if type (val) is dict:
-                        #         func1_bottleneck_list.append(val)
-                        #     else:
-                        #         func1_instr_list.append(val)
+                                # for val in function_1_hashes:
+                                #     if type (val) is dict:
+                                #         func1_bottleneck_list.append(val)
+                                #     else:
+                                #         func1_instr_list.append(val)
 
-                        for val in function_2_hashes:
-                            if type (val) is dict:
-                                func2_bottleneck_list.extend(val.values())
-                            else:
-                                func2_instr_list.append(val)
+                                for val in function_2_hashes:
+                                    if type (val) is dict:
+                                        func2_bottleneck_list.extend(val.values())
+                                    else:
+                                        func2_instr_list.append(val)
 
-                            # test index method - 
-                            # try comparing jaccard dist. for blocks, then average JD
-                            # merit - compares bottlenecks to each other vs. whole func
-                        
-                        average_jaccard = None
-                        max_jd = 0
-                        i = 0
-                        # for bn1 in func1_bottleneck_list:
-                        #     for bn2 in func2_bottleneck_list:
-                        #bn2 in itertools.izip(func1_bottleneck_list, func2_bottleneck_list):
-                        for bn1 in func1_bottleneck_list:
-                            for bn2 in func2_bottleneck_list:
+                                    # test index method - 
+                                    # try comparing jaccard dist. for blocks, then average JD
+                                    # merit - compares bottlenecks to each other vs. whole func
+                                
+                                average_jaccard = None
+                                max_jd = 0
+                                i = 0
+                                # for bn1 in func1_bottleneck_list:
+                                #     for bn2 in func2_bottleneck_list:
+                                #bn2 in itertools.izip(func1_bottleneck_list, func2_bottleneck_list):
+                                for bn1 in func1_bottleneck_list:
+                                    for bn2 in func2_bottleneck_list:
 
-                                temp_jd = _jaccard_index(bn1, bn2)
-                                if temp_jd > max_jd:
-                                    max_jd = temp_jd
+                                        temp_jd = _jaccard_index(bn1, bn2)
+                                        if temp_jd > max_jd:
+                                            max_jd = temp_jd
 
-                                #temp_jd = _jaccard_index(bn1, bn2)
+                                        #temp_jd = _jaccard_index(bn1, bn2)
 
-                            if average_jaccard is not None:
-                                average_jaccard += max_jd
-                            else:
-                                average_jaccard = max_jd
+                                    if average_jaccard is not None:
+                                        average_jaccard += max_jd
+                                    else:
+                                        average_jaccard = max_jd
 
-                            i += 1
+                                    i += 1
 
-                        if average_jaccard is not None:
-                            average_jaccard /= i #_jaccard_index(func1_bottleneck_list, func2_bottleneck_list)
-                        
-                        #     # test index method - 
-                        #     # try comparing jaccard dist. for blocks, then average JD
-                        #     # merit - compares bottlenecks to each other vs. whole func
+                                if average_jaccard is not None:
+                                    average_jaccard /= i #_jaccard_index(func1_bottleneck_list, func2_bottleneck_list)
+                                
+                                #     # test index method - 
+                                #     # try comparing jaccard dist. for blocks, then average JD
+                                #     # merit - compares bottlenecks to each other vs. whole func
 
-                        row_name = function_1 + ' (' + sensor + ')'
-                        total_ji = _jaccard_index(function_1_hashes, function_2_hashes)
+                                row_name = function_1 + ' (' + sensor + ')'
+                                total_ji = _jaccard_index(function_1_hashes, function_2_hashes)
 
-                        if average_jaccard is not None:
-                            total_ji = (total_ji + average_jaccard) / 2
+                                if average_jaccard is not None:
+                                    total_ji = (total_ji + average_jaccard) / 2
 
-                        table.push_index(row_name,
-                            function_2,
-                            total_ji
-                        )
-                        table_indexes.add(row_name)
-                       #     break
+                                table.push_index(row_name,
+                                    function_2,
+                                    total_ji
+                                )
+                                table_indexes.add(row_name)
+                            #     break
+                        except KeyError:
+                            print "Error encountered."
 
-        
             tables.append(table)
 
     return tables

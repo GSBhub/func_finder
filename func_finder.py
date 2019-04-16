@@ -572,9 +572,14 @@ def _populate_cfg(addr, func_json):
     regex_replace = [(r"([ \{,:\[])(u)?'([^']+)'", r'\1"\3"'), (r" False([, \}\]])", r' false\1'), (r" True([, \}\]])", r' true\1')]
     for r, s in regex_replace:
         func_json = re.sub(r, s, func_json)
-
+        
+    json_obj = None
+    # while json_obj is None:
     json_obj = json.loads(unicode(func_json, errors='ignore'),
                           strict=False, object_pairs_hook=collections.OrderedDict)
+        # if json_obj is None:
+        #     print "Aaa"
+    assert(json_obj is not None)
     cfg = CFG(json_obj)
     return cfg
 
@@ -899,13 +904,14 @@ def _json_outfile_formatter(json, listing):
             "throttle_position":[],
             "knock_correction":[]
     }
-    for func_type, pair in json[listing].iteritems():
-        a = func_type[func_type.find("(")+1:func_type.find(")")]
-        sensor = _instruction_translation(a)
-        temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
+    if listing in json.keys():
+        for func_type, pair in json[listing].iteritems():
+            a = func_type[func_type.find("(")+1:func_type.find(")")]
+            sensor = _instruction_translation(a)
+            temp[sensor].append(pair[0])# pull all sensor type from row (value in parenthesis)
 
-    for sensor, li in temp.iteritems():
-        li = li.sort()
+        for sensor, li in temp.iteritems():
+            li = li.sort()
 
     return temp
 
@@ -1008,10 +1014,11 @@ def main():
     # set up the parser first
     # default parser args - filename, opens file for JSON parsing
     # can also output JSON file as a .DOT file, or pull in a ROM and call R2
+    file_dir = os.path.dirname(os.path.realpath(__file__))
     parser = argparse.ArgumentParser(
         description='Import and process M7700 JSON Graph files.')
     # rough option to run full list by default on all files in our bin directory - just for testing
-    parser.add_argument('filename', metavar='filename', nargs='?', type=str, default=("/home/greg/Documents/git/func_finder/bins/*.bin"),
+    parser.add_argument('filename', metavar='filename', nargs='?', type=str, default=("{}/bins/*.bin".format(file_dir)),
                         help='M7700 ROM file for parsing')
 
     parser.add_argument('-o', '--outfile', metavar='outfile', default="file.json", type=str,
@@ -1041,37 +1048,41 @@ def main():
     parser.add_argument('-b', '--bottlenecks', dest='bottlenecks', action='store_true',
                    help='Search for and process bottleneck subgraphs')
 
+    parser.add_argument('-s', '--skip', dest='skip', action='store_true', 
+        help='Skip Feature Vector Generation')
+
     parser.add_argument('-d', '--depth', metavar='depth', default=1, type=int,
                    help='Change bottleneck subgraph depth')
 
     logging.basicConfig(filename='log_filename.txt', level=logging.DEBUG)
 
     args = parser.parse_args()
-    if args.filename == "/home/greg/Documents/git/func_finder/bins/*.bin":
+    if args.filename == "{}/bins/*.bin".format(file_dir):
         import glob
-        args.filename = glob.glob("/home/greg/Documents/git/func_finder/bins/*.bin")
+        args.filename = glob.glob("{}/bins/*.bin".format(file_dir))
     outfile = args.outfile
     jsons = OrderedDict()
     function_collections = OrderedDict()
     #tree = ET.parse(args.xml)
     #root = tree.getroot()
     with open(args.xml, 'r') as fin:
-        json_settings = json.load(fin)#root.findall('control') TODO: change var names to json
+        json_settings = json.load(fin) # TODO: change var names to json
     ctrl_roms = OrderedDict() # bins to point to for the control funcs
     rom_list = OrderedDict()
 
-    for infile in args.filename:
-        #if infile is not None:
-        
-        print("Opening file: {}".format(infile))
+    if not args.skip:
+        for infile in args.filename:
+            #if infile is not None:
+            
+            print("Opening file: {}".format(infile))
 
-        function_collections[infile], jsons[infile], rom = _parse_rom(infile, args)
-        rom_list[rom.filename] = rom
+            function_collections[infile], jsons[infile], rom = _parse_rom(infile, args)
+            rom_list[rom.filename] = rom
 
-        for ctrl_name, ctrl_vals in json_settings.iteritems():
-            if (ctrl_name in infile): # pull list of control functions
-                rom_nm = _json_parser_format(infile)
-                ctrl_roms[ctrl_vals['engine']] = rom_list[rom_nm]
+            for ctrl_name, ctrl_vals in json_settings.iteritems():
+                if (ctrl_name in infile): # pull list of control functions
+                    rom_nm = _json_parser_format(infile)
+                    ctrl_roms[ctrl_vals['engine']] = rom_list[rom_nm]
 
     #TODO:
     # use feature vector generation from the ctrl roms to
@@ -1085,10 +1096,10 @@ def main():
     #
     # Pull based on reset vector
 
-    with open(outfile, 'w') as out:
-        json.dump(jsons, out, indent=4, sort_keys=True)
+        with open(outfile, 'w') as out:
+            json.dump(jsons, out, indent=4, sort_keys=True)
 
-        out.close()
+            out.close()
     
     if args.parse_json: # TODO: add some way to name the json output, I guess
         max_candidate_bins = _json_parser_processing(json_settings, outfile, rom_list, ctrl_roms)

@@ -1,0 +1,39 @@
+    "753C21-1995-USDM-Impreza-EJ18": {
+        "engine": "EJ18",
+        "year": 1995,
+        "ROM_ID": "725C21",
+        "RST_VECTOR": 	  "0x9414",
+        "ROM_Start": 	  "0x9000",
+        "JSR_Loop": 	  "0x96e0",
+		"Maintenance_Func": "0x9725",
+		
+		"sensor_functions": {
+			"batt_voltage": ["0x9bc9", "0x9f82", "0xa116", "0xa2c4", "0xb554", "???", "0xdf25"],
+			"vehicle_speed": ["0x9d8a", "0x9e84", "???", "0xa919", "0xb2f2", "0xb592", "???"],
+			"engine_speed": ["0xa59d", "0xa5ec", "0xa9a7", "0xafc6", "0xb5bf", "0xb960"],
+			"water_temp": ["0x9b46", "0xab56"],
+			"ignition_timing": ["0xdb1a", "0xda0f"],
+			"airflow": ["0xddcd"],
+			"throttle_position": ["0xe1cd"],
+			"knock_correction": ["0xafc6"]
+		},
+		
+		"sensors": {
+			"batt_voltage": "0x116c",
+			"vehicle_speed": "0x1075",
+			"engine_speed": "0x1073",
+			"water_temp": "0x11ac",
+			"ignition_timing": "0x109e",
+			"airflow": "0x1310",
+			"throttle_position": "0x1329",
+			"knock_correction": "???"
+		}
+    },
+    
+        <control name="753C21-1995-USDM-Impreza-EJ18">
+        <engine>EJ18</engine>
+        <year>1995</year>
+        <ROM_ID>725C21</ROM_ID>
+        <RST_VECTOR addr="0x9414"/>
+        <ROM_Start addr="0x9000"/>
+    </control>

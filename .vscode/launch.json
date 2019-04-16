@@ -10,8 +10,8 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",//"-e", , "-i", "BRA"
-            "args": ["-o", "test.json", "-j", "-e", "-b"]//, "BBS", "BBC", "BCC", "BCS", "BNE", "BEQ", "JMP"
+            "console": "integratedTerminal",//"-e", , "-i", "BRA""-s",
+            "args": ["-o", "non-bn-test.json", "-j", "-e", "-b"]//, "BBS", "BBC", "BCC", "BCS", "BNE", "BEQ", "JMP"
             // "/home/greg/Documents/ROMs/EG33/USDM/722527-1993-USDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EG33/JDM/722515-1992-JDM-SVX-EG33.bin", "/home/greg/Documents/ROMs/EJ22/EDM/703243-1991-EDM-Legacy-EJ22.bin", "/home/greg/Documents/ROMs/EJ22/Canada/733257-1993-Canada-Legacy-EJ22.bin", 
         },
         {
