@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "func-finder"
+version = "2.0.0"
+description = "Function feature extractor for M7700 ECU binaries"
+requires-python = ">=3.9"
+dependencies = ["r2pipe"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+func-finder = "func_finder.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires radare2 + r2-m7700 plugin installed",
+]

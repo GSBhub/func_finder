@@ -1,0 +1,2 @@
+[console_scripts]
+func-finder = func_finder.__main__:main
