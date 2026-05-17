@@ -37,7 +37,7 @@ jobs:
       - name: Install radare2
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y radare2 libr2-dev make gcc
+          sudo apt-get install -y radare2 make gcc
 
       - name: Build and install r2-m7700 plugin
         run: |
