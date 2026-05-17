@@ -1,0 +1,4 @@
+src/func_finder/__pycache__/
+tests/__pycache__/
+src/*.egg-info/
+*.pyc
